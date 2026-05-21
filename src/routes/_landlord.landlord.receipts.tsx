@@ -550,5 +550,3 @@ function EmptyState({
   );
 }
 
-// Re-export ActiveAction for ReceiptRow — needs to be in scope
-type ActiveAction = { id: string; action: "view" | "download" } | null;
