@@ -3,6 +3,13 @@ import "./lib/error-capture";
 import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
 
+type Env = {
+  /** Set this in Cloudflare Workers dashboard → Settings → Variables & Secrets.
+   *  Value: your Railway backend URL, e.g. https://mytenant-backend-production.up.railway.app
+   *  DO NOT commit this value to git. */
+  API_URL?: string;
+};
+
 type ServerEntry = {
   fetch: (request: Request, env: unknown, ctx: unknown) => Promise<Response> | Response;
 };
@@ -66,8 +73,75 @@ async function normalizeCatastrophicSsrResponse(response: Response): Promise<Res
   return brandedErrorResponse();
 }
 
+// ── /api proxy ────────────────────────────────────────────────────────────────
+// Intercepts every /api/* request and forwards it to the Railway Flask backend.
+// The Railway URL is stored ONLY in the Cloudflare Worker secret API_URL —
+// it never touches git or the frontend bundle.
+async function handleApiProxy(request: Request, apiUrl: string): Promise<Response> {
+  const url = new URL(request.url);
+  // Strip /api prefix, forward the rest to Flask
+  const backendPath = url.pathname.replace(/^\/api/, "") + url.search;
+  const target = `${apiUrl.replace(/\/$/, "")}${backendPath}`;
+
+  const proxyRequest = new Request(target, {
+    method:  request.method,
+    headers: request.headers,
+    body:    ["GET", "HEAD"].includes(request.method) ? undefined : request.body,
+    // Required to stream request bodies (file uploads, etc.)
+    duplex: "half",
+  } as RequestInit & { duplex: string });
+
+  try {
+    const response = await fetch(proxyRequest);
+    // Pass through the response but add CORS headers so browsers accept it
+    const headers = new Headers(response.headers);
+    headers.set("Access-Control-Allow-Origin", url.origin);
+    headers.set("Access-Control-Allow-Credentials", "true");
+    return new Response(response.body, {
+      status:  response.status,
+      headers,
+    });
+  } catch (err) {
+    console.error("[api-proxy] fetch failed:", err);
+    return new Response(JSON.stringify({ error: { message: "Backend unreachable", code: "PROXY_ERROR" } }), {
+      status: 502,
+      headers: { "content-type": "application/json" },
+    });
+  }
+}
+
 export default {
-  async fetch(request: Request, env: unknown, ctx: unknown) {
+  async fetch(request: Request, env: Env, ctx: unknown) {
+    const url = new URL(request.url);
+
+    // Handle CORS preflight for /api/* requests
+    if (request.method === "OPTIONS" && url.pathname.startsWith("/api/")) {
+      return new Response(null, {
+        status: 204,
+        headers: {
+          "Access-Control-Allow-Origin":  url.origin,
+          "Access-Control-Allow-Methods": "GET,POST,PUT,PATCH,DELETE,OPTIONS",
+          "Access-Control-Allow-Headers": "Content-Type,Authorization",
+          "Access-Control-Allow-Credentials": "true",
+          "Access-Control-Max-Age": "86400",
+        },
+      });
+    }
+
+    // Forward /api/* → Railway backend
+    if (url.pathname.startsWith("/api/")) {
+      const apiUrl = env.API_URL;
+      if (!apiUrl) {
+        console.error("[api-proxy] API_URL secret is not set in Cloudflare Worker environment.");
+        return new Response(
+          JSON.stringify({ error: { message: "API_URL not configured", code: "CONFIG_ERROR" } }),
+          { status: 503, headers: { "content-type": "application/json" } }
+        );
+      }
+      return handleApiProxy(request, apiUrl);
+    }
+
+    // All other requests → TanStack Start SSR
     try {
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);

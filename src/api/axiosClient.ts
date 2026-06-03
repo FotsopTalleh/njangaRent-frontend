@@ -6,19 +6,11 @@ import axios, { AxiosError, AxiosRequestConfig } from "axios";
 import { useAuthStore } from "@/store/authStore";
 
 // ── Base URL ─────────────────────────────────────────────────────────────────
-// In browser (dev):  Vite proxy forwards /api/* → http://localhost:5000/*
-// In browser (prod): VITE_API_URL should be the deployed Flask base URL
-// On SSR server:     The Vite proxy does NOT run, so we must use the direct
-//                    Flask URL. VITE_API_SSR_URL (or VITE_API_URL) must be set
-//                    to http://localhost:5000 (local) or your production URL.
-//
-// Quick rule:
-//   • Browser  → use /api  (proxied by Vite dev, or your CDN/nginx in prod)
-//   • SSR Node → use VITE_API_SSR_URL ?? VITE_API_URL ?? http://localhost:5000
-const _isServer = typeof window === "undefined";
-const BASE_URL = _isServer
-  ? (import.meta.env.VITE_API_SSR_URL ?? import.meta.env.VITE_API_URL ?? "http://localhost:5000")
-  : (import.meta.env.VITE_API_URL ?? "/api");
+// In dev:  Vite proxy forwards /api/* → http://localhost:5000 (see vite.config.ts)
+// In prod: The Cloudflare Worker intercepts /api/* and proxies to Railway.
+//          API_URL secret is set in the Worker dashboard — never in git.
+//          Both SSR and browser always call /api — no env detection needed.
+const BASE_URL = import.meta.env.VITE_API_URL ?? "/api";
 
 export const axiosClient = axios.create({
   baseURL: BASE_URL,
