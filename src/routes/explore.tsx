@@ -1,9 +1,11 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Bell, Heart, Home, BedDouble, Bath, Wifi, ImageIcon, MapPin } from "lucide-react";
+import { Bell, Heart, Home, BedDouble, Bath, Wifi, ImageIcon, MapPin, LayoutDashboard } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { axiosClient } from "@/api/axiosClient";
+import { useAuthStore } from "@/store/authStore";
+import { dashboardForRole } from "@/store/authStore";
 
 import { paginateDummyListings } from "@/data/dummyListings";
 
@@ -27,6 +29,8 @@ function ExplorePage() {
   const navigate = useNavigate();
   const [activeFilter, setActiveFilter] = useState("All");
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
+  const user = useAuthStore((s) => s.user);
+  const dashboardTo = user ? dashboardForRole(user.role) : "/login";
 
   const { data: listingsData, isLoading, isError } = useQuery({
     queryKey: ["listings", "explore", activeFilter],
@@ -75,19 +79,41 @@ function ExplorePage() {
             <h1 style={{ fontSize: 22, fontWeight: 800, color: "#1B4332", lineHeight: 1.2, letterSpacing: "-0.5px" }}>NjangaRent</h1>
             <p style={{ fontSize: 13, color: "#6B6B68", marginTop: 2, fontWeight: 500 }}>Find your home in Buea</p>
           </div>
-          <button
-            onClick={() => navigate({ to: "/tenant/notifications" })}
-            style={{ position: "relative", padding: 8, borderRadius: "50%", backgroundColor: "#FFFFFF", border: "0.5px solid #E8E4DC", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
-            aria-label="Notifications"
-          >
-            <Bell size={20} color="#1A1A18" />
-            <span style={{
-              position: "absolute", top: 6, right: 8,
-              width: 8, height: 8, borderRadius: 999,
-              backgroundColor: "#D4A017",
-              border: "2px solid #FFFFFF"
-            }} />
-          </button>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            {/* Dashboard shortcut */}
+            <Link
+              to={dashboardTo}
+              style={{
+                display: "flex", alignItems: "center", gap: 6,
+                padding: "7px 14px",
+                borderRadius: 10,
+                backgroundColor: "#1B4332",
+                color: "#FFFFFF",
+                fontSize: 13, fontWeight: 600,
+                textDecoration: "none",
+                border: "none", cursor: "pointer",
+                whiteSpace: "nowrap",
+              }}
+              aria-label="Go to dashboard"
+            >
+              <LayoutDashboard size={14} />
+              Dashboard
+            </Link>
+            {/* Notifications */}
+            <button
+              onClick={() => navigate({ to: user ? "/tenant/notifications" : "/login" })}
+              style={{ position: "relative", padding: 8, borderRadius: "50%", backgroundColor: "#FFFFFF", border: "0.5px solid #E8E4DC", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+              aria-label="Notifications"
+            >
+              <Bell size={20} color="#1A1A18" />
+              <span style={{
+                position: "absolute", top: 6, right: 8,
+                width: 8, height: 8, borderRadius: 999,
+                backgroundColor: "#D4A017",
+                border: "2px solid #FFFFFF"
+              }} />
+            </button>
+          </div>
         </div>
 
         {/* Filter Chip Bar */}
