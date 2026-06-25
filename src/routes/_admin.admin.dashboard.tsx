@@ -78,12 +78,9 @@ function AdminDashboard() {
                 </div>
                 <div>
                   <h3 className="text-3xl font-bold tracking-tight text-foreground">
-                    {stats?.activeUsers ? (stats.activeUsers * 10).toLocaleString() : "1,200"}
+                    {stats?.activeUsers ? stats.activeUsers.toLocaleString() : "0"}
                   </h3>
                   <p className="text-sm text-muted-foreground font-medium mb-1">Total Users</p>
-                  <p className="text-sm font-semibold text-success flex items-center gap-1">
-                    <ArrowUp className="h-3 w-3" /> 48 this week
-                  </p>
                 </div>
               </CardContent>
             </Card>
@@ -96,12 +93,9 @@ function AdminDashboard() {
                 </div>
                 <div>
                   <h3 className="text-3xl font-bold tracking-tight text-foreground">
-                    {stats?.pendingLandlords ? stats.pendingLandlords + 4 : "6"}
+                    {stats?.pendingLandlords ?? "0"}
                   </h3>
                   <p className="text-sm text-muted-foreground font-medium mb-1">Active Providers</p>
-                  <p className="text-sm font-semibold text-success flex items-center gap-1">
-                    <ArrowUp className="h-3 w-3" /> 2 this month
-                  </p>
                 </div>
               </CardContent>
             </Card>
@@ -114,12 +108,9 @@ function AdminDashboard() {
                 </div>
                 <div>
                   <h3 className="text-3xl font-bold tracking-tight text-foreground">
-                    {stats?.activeListings ? stats.activeListings : "840"}
+                    {stats?.activeListings ?? "0"}
                   </h3>
                   <p className="text-sm text-muted-foreground font-medium mb-1">Total Listings</p>
-                  <p className="text-sm font-semibold text-success flex items-center gap-1">
-                    <ArrowUp className="h-3 w-3" /> 23 this week
-                  </p>
                 </div>
               </CardContent>
             </Card>
@@ -132,12 +123,9 @@ function AdminDashboard() {
                 </div>
                 <div>
                   <h3 className="text-3xl font-bold tracking-tight text-foreground">
-                    {stats?.paymentsThisMonthXaf ? formatXAF(stats.paymentsThisMonthXaf).replace("FCFA", "").trim() : "12.4M"}
+                    {stats?.paymentsThisMonthXaf ? formatXAF(stats.paymentsThisMonthXaf).replace("FCFA", "").trim() : "0"}
                   </h3>
                   <p className="text-sm text-muted-foreground font-medium mb-1">FCFA Processed</p>
-                  <p className="text-sm font-semibold text-success flex items-center gap-1">
-                    <ArrowUp className="h-3 w-3" /> 18% this month
-                  </p>
                 </div>
               </CardContent>
             </Card>
