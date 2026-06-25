@@ -5,6 +5,8 @@ import { Bell, Heart, Home, BedDouble, Bath, Wifi, ImageIcon, MapPin } from "luc
 import { cn } from "@/lib/utils";
 import { axiosClient } from "@/api/axiosClient";
 
+import { paginateDummyListings } from "@/data/dummyListings";
+
 export const Route = createFileRoute("/explore")({
   head: () => ({
     meta: [{ title: "Explore — NjangaRent" }],
@@ -26,7 +28,7 @@ function ExplorePage() {
   const [activeFilter, setActiveFilter] = useState("All");
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
 
-  const { data: listingsData, isLoading } = useQuery({
+  const { data: listingsData, isLoading, isError } = useQuery({
     queryKey: ["listings", "explore", activeFilter],
     queryFn: async () => {
       const params: Record<string, string> = { limit: "50" };
@@ -38,7 +40,17 @@ function ExplorePage() {
     staleTime: 5 * 60 * 1000,
   });
 
-  const listings = listingsData?.data ?? [];
+  // Fallback to dummy data when backend is unavailable or returns empty
+  const isBackendEmpty = !isLoading && (!listingsData?.data || listingsData.data.length === 0);
+  const useDummy = isError || isBackendEmpty;
+  
+  let listings = listingsData?.data ?? [];
+  if (useDummy) {
+    const dummyParams: any = { limit: 50 };
+    const mapped = FILTER_MAP[activeFilter];
+    if (mapped) dummyParams.propertyType = mapped;
+    listings = paginateDummyListings(dummyParams).data;
+  }
 
   return (
     <div style={{ backgroundColor: "#F9F7F2", minHeight: "100vh", paddingBottom: "calc(56px + env(safe-area-inset-bottom))" }}>
