@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Bell, Heart, Home, BedDouble, Bath, Wifi, ImageIcon, MapPin } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { axiosClient } from "@/api/axiosClient";
 
 export const Route = createFileRoute("/explore")({
   head: () => ({
@@ -28,12 +29,11 @@ function ExplorePage() {
   const { data: listingsData, isLoading } = useQuery({
     queryKey: ["listings", "explore", activeFilter],
     queryFn: async () => {
-      const params = new URLSearchParams({ limit: "50" });
+      const params: Record<string, string> = { limit: "50" };
       const mapped = FILTER_MAP[activeFilter];
-      if (mapped) params.set("propertyType", mapped);
-      const res = await fetch(`/api/listings?${params}`);
-      if (!res.ok) throw new Error("Failed to fetch listings");
-      return res.json();
+      if (mapped) params.propertyType = mapped;
+      const res = await axiosClient.get("/listings", { params });
+      return res.data;
     },
     staleTime: 5 * 60 * 1000,
   });
@@ -176,7 +176,6 @@ function ListingCard({
   const images = listing.exteriorImages?.length ? listing.exteriorImages : listing.roomImages || [];
   const photoCount = images.length;
   const coverUrl = photoCount > 0 ? (typeof images[0] === "string" ? images[0] : images[0]?.url) : null;
-  console.log("Listing id:", listing.id, "images array:", images, "coverUrl:", coverUrl);
   const isAvailable = listing.status === "active" || !listing.status;
   const isVerified = listing.isVerified || listing.verified;
 
