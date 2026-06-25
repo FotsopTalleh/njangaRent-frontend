@@ -63,22 +63,21 @@ function ListingDetail() {
     emblaApi.on("select", () => setSelectedIndex(emblaApi.selectedScrollSnap()));
   }, [emblaApi]);
 
-  const { data: listing, isLoading } = useQuery({
+  const { data: listing, isLoading, isError } = useQuery({
     queryKey: ["listing", id],
     queryFn: async () => {
-      // Intercept dummy listing IDs
+      // Intercept dummy listing IDs — no network request needed
       if (id.startsWith("dummy-")) {
         const { dummyListings } = await import("@/data/dummyListings");
         const dummy = dummyListings.find(l => l.id === id);
         if (dummy) return dummy;
         throw new Error("Listing not found");
       }
-
-      const res = await fetch(`/api/listings/${id}`);
-      if (!res.ok) throw new Error("Listing not found");
-      const j = await res.json();
-      return j.data;
+      
+      const { supabaseListings } = await import("@/lib/supabase");
+      return supabaseListings.getById(id);
     },
+    retry: 1,
   });
 
   const { data: rawSlots = [] } = useQuery({

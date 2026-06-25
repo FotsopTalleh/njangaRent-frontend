@@ -35,22 +35,19 @@ function ExplorePage() {
   const { data: listingsData, isLoading, isError } = useQuery({
     queryKey: ["listings", "explore", activeFilter],
     queryFn: async () => {
-      const params: Record<string, string> = { limit: "100" }; // Increase limit to show all
+      const { supabaseListings } = await import("@/lib/supabase");
       const mapped = FILTER_MAP[activeFilter];
-      if (mapped) params.propertyType = mapped;
-      const res = await axiosClient.get("/listings", { params });
-      return res.data;
+      return supabaseListings.browse({
+        limit: 100,
+        propertyType: mapped,
+      });
     },
     staleTime: 2 * 60 * 1000, // Refresh more often (2 min)
     retry: 2,
   });
 
-  // Normalise response shape — backend may return { data: [...] } or { listings: [...] } or directly an array
-  const rawListings: any[] =
-    Array.isArray(listingsData)                   ? listingsData         :
-    Array.isArray(listingsData?.data)             ? listingsData.data    :
-    Array.isArray(listingsData?.listings)         ? listingsData.listings :
-    [];
+  // Since supabaseListings.browse already returns the normalized array:
+  const rawListings: any[] = listingsData || [];
 
   // Only fall back to dummy data when the backend actually errors (not just empty results)
   const listings = isError && rawListings.length === 0
