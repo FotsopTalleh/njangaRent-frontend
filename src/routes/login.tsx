@@ -89,6 +89,11 @@ function LoginPage() {
         throw new Error("Your password has expired. Please reset your password.");
       }
 
+      // Bot protection / CAPTCHA required (happens on custom forms if Bot Protection is enabled)
+      if (result.status === "needs_client_trust" as any) {
+        throw new Error("Login blocked by Bot Protection. Please disable Bot Protection in your Clerk Dashboard or use the official Clerk component.");
+      }
+
       // Unknown — show the raw status for debugging
       throw new Error(`Sign-in could not be completed (status: ${result.status}). Please try again or contact support.`);
     },
