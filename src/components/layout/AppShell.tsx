@@ -39,7 +39,7 @@ const landlordNav: NavItem[] = [
 
 const studentNav: NavItem[] = [
   { to: "/student/dashboard",         label: "Home",          icon: Home },
-  { to: "/listings",                  label: "Browse",        icon: Building2 },
+  { to: "/explore",                   label: "Explore",       icon: Building2 },
   { to: "/student/listings/saved",    label: "Saved",         icon: BookmarkCheck },
   { to: "/student/appointments",      label: "Appointments",  icon: Calendar },
   { to: "/student/inbox",             label: "Inbox",         icon: MessageSquare, badge: "unread" },
@@ -51,9 +51,9 @@ const studentNav: NavItem[] = [
 // Legacy tenant nav — keeps existing routes functional
 const tenantNav: NavItem[] = [
   { to: "/tenant/dashboard",     label: "Home",          icon: LayoutDashboard },
+  { to: "/explore",              label: "Explore",       icon: Building2 },
   { to: "/tenant/upload",        label: "Upload",        icon: FileCheck },
   { to: "/tenant/payments",      label: "Payments",      icon: Receipt },
-  { to: "/tenant/receipts",      label: "Receipts",      icon: Receipt },
   { to: "/tenant/notifications", label: "Alerts",        icon: Bell },
 ];
 

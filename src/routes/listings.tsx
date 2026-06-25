@@ -58,7 +58,7 @@ function ListingsBrowse() {
                 <Link to={
                   user.role === "landlord" ? "/landlord/dashboard" :
                   user.role === "admin"    ? "/admin/dashboard"    :
-                  "/tenant/dashboard"
+                  "/student/dashboard"
                 }>
                   My dashboard
                 </Link>
