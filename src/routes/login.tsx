@@ -47,7 +47,7 @@ function LoginPage() {
   const login = useMutation({
     mutationFn: async (v: LoginInput) => {
       if (!isLoaded) throw new Error("Authentication service is loading...");
-      
+
       const result = await signIn.create({
         identifier: v.email,
         password: v.password,
@@ -56,13 +56,44 @@ function LoginPage() {
       if (result.status === "complete") {
         await setActive({ session: result.createdSessionId });
         return result;
-      } else {
-        throw new Error("Additional verification steps required.");
       }
+
+      // Handle email-code verification (some Clerk configurations require it)
+      if (result.status === "needs_first_factor") {
+        const emailFactor = result.supportedFirstFactors?.find(
+          (f: any) => f.strategy === "email_code"
+        );
+        if (emailFactor) {
+          await signIn.prepareFirstFactor({
+            strategy: "email_code",
+            emailAddressId: (emailFactor as any).emailAddressId,
+          });
+          throw new Error("A verification code was sent to your email. Please check your inbox and try again.");
+        }
+        // Phone OTP fallback
+        const phoneFactor = result.supportedFirstFactors?.find(
+          (f: any) => f.strategy === "phone_code"
+        );
+        if (phoneFactor) {
+          throw new Error("A verification code was sent to your phone. Please check your messages.");
+        }
+      }
+
+      // MFA / 2FA step
+      if (result.status === "needs_second_factor") {
+        throw new Error("Two-factor authentication is required. Please use the Clerk portal to sign in.");
+      }
+
+      // Password reset required
+      if (result.status === "needs_new_password") {
+        throw new Error("Your password has expired. Please reset your password.");
+      }
+
+      // Unknown — show the raw status for debugging
+      throw new Error(`Sign-in could not be completed (status: ${result.status}). Please try again or contact support.`);
     },
     onSuccess: () => {
-      // Navigate directly to the dashboard based on role from Clerk metadata
-      // This avoids the double-redirect through AuthSync on the home page
+      // Navigate directly to the role-based dashboard — no round-trip through /
       const role = (signIn?.userData as any)?.unsafeMetadata?.role ||
                    storedUser?.role ||
                    "student";
