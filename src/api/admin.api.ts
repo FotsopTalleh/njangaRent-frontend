@@ -19,9 +19,9 @@ export interface PaginatedAdmin<T> {
 
 export const adminApi = {
   /** Dashboard aggregate stats. */
-  getDashboard: async (): Promise<{ data: AdminStats }> => {
+  getDashboard: async (): Promise<AdminStats> => {
     const res = await axiosClient.get("/admin/dashboard");
-    return res.data;
+    return res.data.data ? res.data.data : res.data;
   },
 
   // ── Verification queues ────────────────────────────────────────────────────
