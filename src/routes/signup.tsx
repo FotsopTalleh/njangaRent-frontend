@@ -52,9 +52,10 @@ function SignupPage() {
   // If user is already signed in, redirect to their dashboard
   useEffect(() => {
     if (isSignedIn) {
-      navigate({ to: "/landlord/dashboard", replace: true }); // AuthSync hasn't set role yet, safest default
+      // Default to tenant dashboard; AuthSync will update once role is read from Clerk
+      navigate({ to: dashboardForRole(role as any), replace: true });
     }
-  }, [isSignedIn, navigate]);
+  }, [isSignedIn, navigate, role]);
 
   const handleCreateAccount = async () => {
     if (!isLoaded || !signUp) return;
@@ -95,29 +96,26 @@ function SignupPage() {
 
     try {
       const result = await signUp.attemptEmailAddressVerification({ code });
-      console.log("Verification result:", result.status, result);
 
       if (result.status === "complete") {
         await setActive({ session: result.createdSessionId });
-        // AuthSync will fire and route to the correct role dashboard
-        setTimeout(() => navigate({ to: "/" }), 500);
+        // Navigate directly to the role-based dashboard — no round-trip through /
+        navigate({ to: dashboardForRole(role as any), replace: true });
       } else if (result.status === "missing_requirements" && result.missingFields?.includes("username")) {
         // If they are stuck here from a previous attempt, auto-fix it
         const fallbackUsername = email.split("@")[0].replace(/[^a-zA-Z0-9]/g, "").toLowerCase() + Math.floor(Math.random() * 10000);
         const updated = await signUp.update({ username: fallbackUsername });
         if (updated.status === "complete") {
           await setActive({ session: updated.createdSessionId });
-          setTimeout(() => navigate({ to: "/" }), 500);
+          navigate({ to: dashboardForRole(role as any), replace: true });
         } else {
           setError(`Signup incomplete (status: ${updated.status}). Please try again.`);
         }
       } else {
-        console.log("Signup not complete, status:", result.status, "Missing:", result.missingFields, "Unverified:", result.unverifiedFields);
         const missing = result.missingFields?.join(", ") || "Unknown";
-        setError(`Signup incomplete (missing: ${missing}). Check console for details.`);
+        setError(`Signup incomplete (missing: ${missing}). Please try again.`);
       }
     } catch (err: any) {
-      console.error("Verification error:", err);
       const msg = err.errors?.[0]?.longMessage || err.errors?.[0]?.message || err.message || "Verification failed.";
       setError(msg);
     } finally {

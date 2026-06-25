@@ -126,22 +126,23 @@ function AuthSync() {
       const email = user.emailAddresses[0]?.emailAddress || "";
       const name = `${user.firstName || ""} ${user.lastName || ""}`.trim() || email;
 
-      // Sync user to backend DB (non-blocking, best-effort)
-      getToken().then(async (token) => {
-        try {
-          await fetch("/api/auth/sync", {
-            method: "POST",
-            headers: { Authorization: `Bearer ${token}` },
-          });
-        } catch (_) { /* non-fatal */ }
-      });
-
       setUser({ id: user.id, email, name, role, status: "ACTIVE", avatarUrl: user.imageUrl });
       setSessionActive(true);
 
-      // On first sync after login: redirect away from public pages
+      // On first sync after login: redirect away from public pages + sync to backend DB
       if (!hasSynced) {
         setHasSynced(true);
+
+        // Sync user to backend DB (non-blocking, best-effort) — fires once per session
+        getToken().then(async (token) => {
+          try {
+            await fetch("/api/auth/sync", {
+              method: "POST",
+              headers: { Authorization: `Bearer ${token}` },
+            });
+          } catch (_) { /* non-fatal */ }
+        });
+
         const currentPath = router.state.location.pathname;
         const publicPaths = ["/", "/login", "/signup", "/sso-callback", "/forgot-password"];
         if (publicPaths.includes(currentPath)) {

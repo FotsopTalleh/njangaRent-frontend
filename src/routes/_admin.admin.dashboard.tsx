@@ -42,7 +42,7 @@ function AdminDashboard() {
     refetchInterval: 60_000,
   });
 
-
+  const stats = statsData?.data;
   const recentLandlords = landlordsData?.data || [];
 
   return (

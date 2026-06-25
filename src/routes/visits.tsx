@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useAuthStore } from "@/store/authStore";
+import { axiosClient } from "@/api/axiosClient";
 import { Calendar, Clock, CheckCircle, XCircle, AlertCircle, Bell } from "lucide-react";
 import { toast } from "sonner";
 import { useEffect, useRef } from "react";
@@ -11,20 +11,16 @@ export const Route = createFileRoute("/visits")({
 });
 
 function VisitsPage() {
-  const { token } = useAuthStore();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const prevRef = useRef<any[]>([]);
 
   const { data, isLoading } = useQuery({
     queryKey: ["visits", "booked"],
     queryFn: async () => {
-      const res = await fetch("/api/visits/booked", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error("Failed to fetch visits");
-      return res.json();
+      const res = await axiosClient.get("/visits/booked");
+      return res.data;
     },
-    enabled: !!token,
     refetchInterval: 5000,
   });
 
@@ -45,13 +41,8 @@ function VisitsPage() {
 
   const cancelVisit = useMutation({
     mutationFn: async (slotId: string) => {
-      const res = await fetch(`/api/visits/slots/${slotId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ status: "cancelled" }),
-      });
-      if (!res.ok) throw new Error("Failed to cancel");
-      return res.json();
+      const res = await axiosClient.patch(`/visits/slots/${slotId}`, { status: "cancelled" });
+      return res.data;
     },
     onSuccess: () => {
       toast.success("Visit cancelled");

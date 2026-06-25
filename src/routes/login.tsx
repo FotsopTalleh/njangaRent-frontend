@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { loginSchema, type LoginInput } from "@/lib/schemas/auth.schemas";
 import { AuthShell } from "@/components/layout/AuthShell";
-import { useSignIn, useUser } from "@clerk/clerk-react";
+import { useSignIn, useUser, useAuth } from "@clerk/clerk-react";
 import { cn } from "@/lib/utils";
 import { useAuthStore, dashboardForRole } from "@/store/authStore";
 
@@ -28,6 +28,7 @@ function LoginPage() {
   const navigate = useNavigate();
   const { isLoaded, signIn, setActive } = useSignIn();
   const { isLoaded: userLoaded, isSignedIn } = useUser();
+  const { userId } = useAuth();
   const storedUser = useAuthStore((s) => s.user);
   const [showPw, setShowPw] = useState(false);
 
@@ -60,8 +61,12 @@ function LoginPage() {
       }
     },
     onSuccess: () => {
-      // Navigate to home, AuthSync will handle the rest
-      navigate({ to: "/" });
+      // Navigate directly to the dashboard based on role from Clerk metadata
+      // This avoids the double-redirect through AuthSync on the home page
+      const role = (signIn?.userData as any)?.unsafeMetadata?.role ||
+                   storedUser?.role ||
+                   "student";
+      navigate({ to: dashboardForRole(role as any), replace: true });
     },
   });
 
