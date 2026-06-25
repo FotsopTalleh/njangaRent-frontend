@@ -11,7 +11,7 @@ import { VitePWA } from "vite-plugin-pwa";
 // @cloudflare/vite-plugin builds from this — wrangler.jsonc main alone is insufficient.
 export default defineConfig({
   tanstackStart: {
-    server: { entry: "server" },
+    target: "vercel",
   },
   vite: {
     plugins: [
