@@ -30,7 +30,7 @@ const revenueData = [
 ];
 
 function AdminDashboard() {
-  const { data: statsData, isLoading: statsLoading } = useQuery({
+  const { data: stats, isLoading: statsLoading } = useQuery({
     queryKey: ["admin-dashboard"],
     queryFn: adminApi.getDashboard,
     refetchInterval: 60_000,
@@ -42,7 +42,7 @@ function AdminDashboard() {
     refetchInterval: 60_000,
   });
 
-  const stats = statsData?.data;
+
   const recentLandlords = landlordsData?.data || [];
 
   return (
