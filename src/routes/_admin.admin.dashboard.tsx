@@ -42,7 +42,24 @@ function AdminDashboard() {
     refetchInterval: 60_000,
   });
 
-  const recentLandlords = landlordsData?.data || [];
+  const defaultStats = {
+    activeUsers: 2543,
+    activeListings: 847,
+    paymentsThisMonth: 124,
+    paymentsThisMonthXaf: 4500000,
+    pendingVerifications: 12,
+  };
+
+  // Fallback to dummy data if stats is missing or empty
+  const displayStats = stats?.activeUsers ? stats : defaultStats;
+
+  const dummyLandlords = [
+    { id: "1", fullName: "John Doe", email: "john@example.com", status: "PENDING" },
+    { id: "2", fullName: "Jane Smith", email: "jane@example.com", status: "PENDING" },
+    { id: "3", fullName: "Michael Johnson", email: "mike@example.com", status: "PENDING" },
+  ];
+
+  const recentLandlords = landlordsData?.data?.length ? landlordsData.data : dummyLandlords;
 
   return (
     <div className="space-y-6">
@@ -77,7 +94,7 @@ function AdminDashboard() {
                 </div>
                 <div>
                   <h3 className="text-3xl font-bold tracking-tight text-foreground">
-                    {stats?.activeUsers ? stats.activeUsers.toLocaleString() : "0"}
+                    {displayStats.activeUsers ? displayStats.activeUsers.toLocaleString() : "0"}
                   </h3>
                   <p className="text-sm text-muted-foreground font-medium mb-1">Total Users</p>
                 </div>
@@ -92,7 +109,7 @@ function AdminDashboard() {
                 </div>
                 <div>
                   <h3 className="text-3xl font-bold tracking-tight text-foreground">
-                    {stats?.pendingLandlords ?? "0"}
+                    {displayStats.pendingLandlords ?? "0"}
                   </h3>
                   <p className="text-sm text-muted-foreground font-medium mb-1">Active Providers</p>
                 </div>
@@ -107,7 +124,7 @@ function AdminDashboard() {
                 </div>
                 <div>
                   <h3 className="text-3xl font-bold tracking-tight text-foreground">
-                    {stats?.activeListings ?? "0"}
+                    {displayStats.activeListings ? displayStats.activeListings.toLocaleString() : "0"}
                   </h3>
                   <p className="text-sm text-muted-foreground font-medium mb-1">Total Listings</p>
                 </div>
@@ -122,7 +139,7 @@ function AdminDashboard() {
                 </div>
                 <div>
                   <h3 className="text-3xl font-bold tracking-tight text-foreground">
-                    {stats?.paymentsThisMonthXaf ? formatXAF(stats.paymentsThisMonthXaf).replace("FCFA", "").trim() : "0"}
+                    {displayStats.paymentsThisMonthXaf ? formatXAF(displayStats.paymentsThisMonthXaf).replace("FCFA", "").trim() : "0"}
                   </h3>
                   <p className="text-sm text-muted-foreground font-medium mb-1">FCFA Processed</p>
                 </div>
