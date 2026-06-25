@@ -51,6 +51,14 @@ function ListingDetail() {
   const { data: listing, isLoading } = useQuery({
     queryKey: ["listing", id],
     queryFn: async () => {
+      // Intercept dummy listing IDs
+      if (id.startsWith("dummy-")) {
+        const { dummyListings } = await import("@/data/dummyListings");
+        const dummy = dummyListings.find(l => l.id === id);
+        if (dummy) return dummy;
+        throw new Error("Listing not found");
+      }
+
       const res = await fetch(`/api/listings/${id}`);
       if (!res.ok) throw new Error("Listing not found");
       const j = await res.json();
@@ -61,6 +69,8 @@ function ListingDetail() {
   const { data: rawSlots = [] } = useQuery({
     queryKey: ["visit-slots", id],
     queryFn: async () => {
+      if (id.startsWith("dummy-")) return [];
+
       const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
       const res = await fetch(`/api/visits/slots/${id}`, { headers });
       if (!res.ok) return [];
