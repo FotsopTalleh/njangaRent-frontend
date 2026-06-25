@@ -1,17 +1,8 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Navigate } from "@tanstack/react-router";
-import { useAuthStore, type UserRole } from "@/store/authStore";
+import { useAuthStore, type UserRole, dashboardForRole } from "@/store/authStore";
+import { useUser } from "@clerk/clerk-react";
 import { Loader2 } from "lucide-react";
-
-/** Map each role to its home route. */
-function homeFor(role: UserRole): string {
-  switch (role) {
-    case "landlord": return "/landlord/dashboard";
-    case "student":  return "/student/dashboard";
-    case "tenant":   return "/student/dashboard"; // tenants redirect to student
-    case "admin":    return "/admin/dashboard";
-  }
-}
 
 interface RoleGateProps {
   /** Single role or array of accepted roles. */
@@ -20,14 +11,15 @@ interface RoleGateProps {
 }
 
 export function RoleGate({ role, children }: RoleGateProps) {
-  const user  = useAuthStore((s) => s.user);
-  const token = useAuthStore((s) => s.accessToken);
+  const { isLoaded, isSignedIn } = useUser();           // Clerk is authoritative
+  const user = useAuthStore((s) => s.user);
 
-  // SSR-safe mount guard — see original comment in MyTenant source.
+  // SSR-safe mount guard
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
 
-  if (!mounted) {
+  // Waiting for mount (SSR hydration) or for Clerk to finish loading
+  if (!mounted || !isLoaded) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -35,19 +27,30 @@ export function RoleGate({ role, children }: RoleGateProps) {
     );
   }
 
-  if (!token || !user) return <Navigate to="/login" />;
+  // Clerk says not signed in → send to login
+  if (!isSignedIn) return <Navigate to="/login" />;
 
-  // PENDING status — redirect to verification pending page
-  if (user.status === "PENDING") return <Navigate to="/verify-pending" />;
-  if (user.status === "REJECTED") return <Navigate to="/verify-pending" />;
-  if (user.status === "BANNED") return <Navigate to="/verify-pending" />;
+  // User profile not yet synced from Clerk → still loading
+  if (!user) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
-  const allowed = Array.isArray(role) ? role : [role];
+  // PENDING / REJECTED / BANNED status
+  if (user.status === "PENDING" || user.status === "REJECTED" || user.status === "BANNED") {
+    return <Navigate to="/verify-pending" />;
+  }
+
   // tenant is an alias for student in legacy routes
   const effectiveRole: UserRole = user.role === "tenant" ? "student" : user.role;
+  const allowed = Array.isArray(role) ? role : [role];
 
+  // Wrong role → redirect to own dashboard
   if (!allowed.includes(effectiveRole) && !allowed.includes(user.role)) {
-    return <Navigate to={homeFor(effectiveRole)} />;
+    return <Navigate to={dashboardForRole(effectiveRole)} />;
   }
 
   return <>{children}</>;

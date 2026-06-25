@@ -127,7 +127,7 @@ function ListingManageCard({
 
         <div className="flex gap-2">
           <Button asChild variant="outline" size="sm" className="flex-1 rounded-xl gap-1.5 h-8">
-            <Link to="/listings/$id" params={{ id: listing.id }} aria-label={`View public page for ${listing.title}`}>
+            <Link to="/listing/$id" params={{ id: listing.id }} aria-label={`View public page for ${listing.title}`}>
               <Eye className="h-3.5 w-3.5" aria-hidden="true" />
               View
             </Link>

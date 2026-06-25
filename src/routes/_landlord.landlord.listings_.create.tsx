@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Link } from "@tanstack/react-router";
 
-export const Route = createFileRoute("/_landlord/landlord/listings/create")({
+export const Route = createFileRoute("/_landlord/landlord/listings_/create")({
   head: () => ({ meta: [{ title: "New Listing — NjangaRent" }] }),
   component: CreateListing,
 });
@@ -108,7 +108,7 @@ function CreateListing() {
   const canSubmit = title.trim() && propertyType && rentAmount && exteriorFiles.length > 0;
 
   return (
-    <div className="max-w-2xl space-y-8">
+    <div className="w-full max-w-2xl mx-auto space-y-6 px-1 sm:px-0">
       <div className="flex items-center gap-3">
         <Button asChild variant="ghost" size="sm" className="h-8 rounded-xl gap-1.5">
           <Link to="/landlord/listings" aria-label="Back to my listings">
@@ -124,14 +124,14 @@ function CreateListing() {
 
       <div className="space-y-6">
         {/* Basic info */}
-        <section className="rounded-2xl border border-border bg-card p-6 space-y-5" aria-labelledby="section-basic">
+        <section className="rounded-2xl border border-border bg-card p-4 sm:p-6 space-y-4 sm:space-y-5" aria-labelledby="section-basic">
           <h2 id="section-basic" className="font-semibold">Basic information</h2>
 
           <Field label="Listing title" required>
             <Input id="listing-title" className="rounded-xl h-11" placeholder="e.g. Clean self-contained near UB gate" value={title} onChange={(e) => setTitle(e.target.value)} />
           </Field>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="Property type" required>
               <Select value={propertyType} onValueChange={setPropertyType}>
                 <SelectTrigger id="listing-type" className="rounded-xl h-11" aria-label="Property type">
@@ -162,9 +162,9 @@ function CreateListing() {
         </section>
 
         {/* Pricing */}
-        <section className="rounded-2xl border border-border bg-card p-6 space-y-5" aria-labelledby="section-pricing">
+        <section className="rounded-2xl border border-border bg-card p-4 sm:p-6 space-y-4 sm:space-y-5" aria-labelledby="section-pricing">
           <h2 id="section-pricing" className="font-semibold">Pricing & availability</h2>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="Rent amount (XAF)" required>
               <Input id="listing-rent" type="number" min={1000} className="rounded-xl h-11" placeholder="e.g. 30000" value={rentAmount} onChange={(e) => setRentAmount(e.target.value)} />
             </Field>
@@ -187,7 +187,7 @@ function CreateListing() {
         </section>
 
         {/* Amenities */}
-        <section className="rounded-2xl border border-border bg-card p-6 space-y-4" aria-labelledby="section-amenities">
+        <section className="rounded-2xl border border-border bg-card p-4 sm:p-6 space-y-4" aria-labelledby="section-amenities">
           <h2 id="section-amenities" className="font-semibold">Amenities</h2>
           <div className="flex flex-wrap gap-2" role="group" aria-label="Select amenities">
             {AMENITY_OPTIONS.map((a) => (
@@ -205,18 +205,13 @@ function CreateListing() {
         </section>
 
         {/* Location */}
-        <section className="rounded-2xl border border-border bg-card p-6 space-y-4" aria-labelledby="section-location">
+        <section className="rounded-2xl border border-border bg-card p-4 sm:p-6 space-y-4" aria-labelledby="section-location">
           <h2 id="section-location" className="font-semibold">Location</h2>
           <MapPicker value={location} onChange={(lat, lng) => setLocation({ lat, lng })} />
-          {location && (
-            <p className="text-xs text-muted-foreground">
-              Selected: {location.lat.toFixed(5)}, {location.lng.toFixed(5)}
-            </p>
-          )}
         </section>
 
         {/* Images */}
-        <section className="rounded-2xl border border-border bg-card p-6 space-y-5" aria-labelledby="section-images">
+        <section className="rounded-2xl border border-border bg-card p-4 sm:p-6 space-y-4 sm:space-y-5" aria-labelledby="section-images">
           <h2 id="section-images" className="font-semibold">Photos</h2>
           <ImageUpload
             id="listing-exterior"
@@ -233,7 +228,7 @@ function CreateListing() {
         </section>
 
         {/* Rules */}
-        <section className="rounded-2xl border border-border bg-card p-6 space-y-4" aria-labelledby="section-rules">
+        <section className="rounded-2xl border border-border bg-card p-4 sm:p-6 space-y-4" aria-labelledby="section-rules">
           <h2 id="section-rules" className="font-semibold">House rules</h2>
           <textarea
             id="listing-rules"

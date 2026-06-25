@@ -1,5 +1,6 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { ClerkProvider, useUser, useAuth } from "@clerk/clerk-react";
 import {
   Outlet,
   Link,
@@ -10,6 +11,8 @@ import {
 } from "@tanstack/react-router";
 import { Toaster } from "@/components/ui/sonner";
 import { useThemeStore } from "@/store/themeStore";
+import { useAuthStore } from "@/store/authStore";
+import { BottomTabBar } from "@/components/layout/BottomTabBar";
 
 import appCss from "../styles.css?url";
 
@@ -75,15 +78,15 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "NjangaRent — Student Housing, Made Simple" },
-      { name: "description", content: "Find affordable student accommodation near University of Buea. NjangaRent connects students with verified landlords in Buea, Cameroon." },
+      { title: "NjangaRent — Find your home in Buea, Cameroon" },
+      { name: "description", content: "Browse verified rooms, studios, and apartments across Buea — Molyko, Bonduma, Great Soppo, Buea Town and more. Message landlords, book viewings, pay rent via Mobile Money." },
       { name: "author", content: "NjangaRent" },
       { name: "theme-color", content: "#1B4332" },
       { name: "apple-mobile-web-app-capable", content: "yes" },
       { name: "apple-mobile-web-app-status-bar-style", content: "default" },
       { name: "apple-mobile-web-app-title", content: "NjangaRent" },
-      { property: "og:title", content: "NjangaRent — Student Housing, Made Simple" },
-      { property: "og:description", content: "Find affordable student accommodation near University of Buea." },
+      { property: "og:title", content: "NjangaRent — Find your home in Buea" },
+      { property: "og:description", content: "Verified housing across Buea, Cameroon. Rooms, studios, apartments — message landlords, pay via MoMo." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:title", content: "NjangaRent" },
@@ -120,16 +123,96 @@ function RootShell({ children }: { children: React.ReactNode }) {
   );
 }
 
+const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
+
+if (!PUBLISHABLE_KEY) {
+  throw new Error("Missing Publishable Key");
+}
+
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const router = useRouter();
+  const currentPath = router.state.location.pathname;
+
+  const hideTabs = 
+    currentPath.startsWith("/listing/") || 
+    currentPath.includes("/messages/") || 
+    currentPath.startsWith("/payments/");
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <ThemeBoot />
-      <Outlet />
-      <Toaster richColors position="top-right" />
-    </QueryClientProvider>
+    <ClerkProvider publishableKey={PUBLISHABLE_KEY}>
+      <QueryClientProvider client={queryClient}>
+        <ThemeBoot />
+        <AuthSync />
+        <Outlet />
+        <div style={{ display: hideTabs ? "none" : "block" }}>
+          <BottomTabBar />
+        </div>
+        <Toaster richColors position="top-right" />
+      </QueryClientProvider>
+    </ClerkProvider>
   );
+}
+
+function AuthSync() {
+  const { isLoaded, isSignedIn, user } = useUser();
+  const { getToken } = useAuth();
+  const setUser = useAuthStore((s) => s.setUser);
+  const setSessionActive = useAuthStore((s) => s.setSessionActive);
+  const clearSession = useAuthStore((s) => s.clearSession);
+  const router = useRouter();
+  const [hasSynced, setHasSynced] = useState(false);
+
+  useEffect(() => {
+    if (!isLoaded) return;
+
+    if (isSignedIn && user) {
+      // ── Session is active ────────────────────────────────────────────────
+      const role = ((user.unsafeMetadata?.role as string) || "tenant") as import("@/store/authStore").UserRole;
+      const email = user.emailAddresses[0]?.emailAddress || "";
+      const name = `${user.firstName || ""} ${user.lastName || ""}`.trim() || email;
+
+      // Sync user to backend DB (non-blocking, best-effort)
+      getToken().then(async (token) => {
+        try {
+          await fetch("/api/auth/sync", {
+            method: "POST",
+            headers: { Authorization: `Bearer ${token}` },
+          });
+        } catch (_) { /* non-fatal */ }
+      });
+
+      setUser({ id: user.id, email, name, role, status: "ACTIVE", avatarUrl: user.imageUrl });
+      setSessionActive(true);
+
+      // On first sync after login: redirect away from public pages
+      if (!hasSynced) {
+        setHasSynced(true);
+        const currentPath = router.state.location.pathname;
+        const publicPaths = ["/", "/login", "/signup", "/sso-callback", "/forgot-password"];
+        if (publicPaths.includes(currentPath)) {
+          const dest = role === "landlord" ? "/landlord/dashboard"
+                     : role === "admin"    ? "/admin/dashboard"
+                     : "/student/dashboard";
+          router.navigate({ to: dest });
+        }
+      }
+    } else if (!isSignedIn && hasSynced) {
+      // ── Session ended (signed out or token expired) ──────────────────────
+      clearSession();
+      setHasSynced(false);
+      const currentPath = router.state.location.pathname;
+      const protectedPrefixes = ["/landlord", "/admin", "/student", "/tenant", "/profile"];
+      if (protectedPrefixes.some((p) => currentPath.startsWith(p))) {
+        router.navigate({ to: "/login" });
+      }
+    } else if (!isSignedIn) {
+      // ── Initial page load with no session ──────────────────────────────
+      clearSession();
+    }
+  }, [isLoaded, isSignedIn, user, getToken, setUser, setSessionActive, clearSession, hasSynced, router]);
+
+  return null;
 }
 
 function ThemeBoot() {

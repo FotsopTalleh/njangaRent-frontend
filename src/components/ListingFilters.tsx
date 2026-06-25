@@ -30,7 +30,7 @@ const SORT_OPTIONS = [
   { value: "newest",     label: "Newest first" },
   { value: "price_asc",  label: "Price: low to high" },
   { value: "price_desc", label: "Price: high to low" },
-  { value: "closest",    label: "Closest to UB" },
+  { value: "closest",    label: "Closest to Molyko" },
 ];
 
 interface ListingFiltersProps {
@@ -165,10 +165,10 @@ export function ListingFilters({ params, onChange, className }: ListingFiltersPr
             </div>
           </div>
 
-          {/* Distance from UB */}
+          {/* Distance from Molyko */}
           <div className="space-y-2">
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-              Max distance from UB:{" "}
+              Max distance from Molyko:{" "}
               <span className="text-foreground font-semibold">
                 {params.maxDistanceKm ? `${params.maxDistanceKm} km` : "Any"}
               </span>
@@ -182,7 +182,7 @@ export function ListingFilters({ params, onChange, className }: ListingFiltersPr
               onValueChange={([v]) =>
                 onChange({ ...params, maxDistanceKm: v >= 15 ? undefined : v })
               }
-              aria-label="Maximum distance from University of Buea in kilometres"
+              aria-label="Maximum distance from Molyko centre in kilometres"
             />
           </div>
 

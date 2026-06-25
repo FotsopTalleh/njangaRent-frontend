@@ -19,7 +19,7 @@ import {
 import { Link } from "@tanstack/react-router";
 import type { Listing } from "@/api/listings.api";
 
-export const Route = createFileRoute("/_landlord/landlord/listings/$id/edit")({
+export const Route = createFileRoute("/_landlord/landlord/listings_/$id/edit")({
   head: () => ({ meta: [{ title: "Edit Listing — NjangaRent" }] }),
   component: EditListing,
 });

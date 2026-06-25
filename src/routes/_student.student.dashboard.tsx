@@ -39,7 +39,7 @@ function StudentDashboard() {
           Welcome back, {user?.name?.split(" ")[0]}
         </h1>
         <p className="text-muted-foreground text-sm mt-1">
-          Find your perfect room near University of Buea.
+          Find your perfect home across Buea.
         </p>
       </div>
 

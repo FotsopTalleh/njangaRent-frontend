@@ -1,6 +1,7 @@
 // src/utils/haversine.ts — Client-side distance calculation
-const UB_LAT = 4.1537;
-const UB_LNG = 9.2443;
+// Reference point: Molyko centre / Buea town centre
+const MOLYKO_LAT = 4.1537;
+const MOLYKO_LNG = 9.2443;
 
 export function haversine(
   lat1: number, lng1: number,
@@ -18,14 +19,18 @@ export function haversine(
   return Math.round(R * c * 100) / 100;
 }
 
-/** Distance in km from given coords to UB Main Gate. */
-export function distanceFromUB(lat: number, lng: number): number {
-  return haversine(UB_LAT, UB_LNG, lat, lng);
+/** Distance in km from given coords to Molyko centre. */
+export function distanceFromMolyko(lat: number, lng: number): number {
+  return haversine(MOLYKO_LAT, MOLYKO_LNG, lat, lng);
 }
 
-/** Format a distance number for display. e.g. "1.2 km from UB" */
+/** @deprecated use distanceFromMolyko */
+export const distanceFromUB = distanceFromMolyko;
+
+/** Format a distance number for display. e.g. "1.2 km from Molyko" */
 export function formatDistance(km: number | null | undefined): string {
-  if (km == null) return "Distance unknown";
-  if (km < 1) return `${Math.round(km * 1000)} m from UB`;
-  return `${km.toFixed(1)} km from UB`;
+  if (km == null) return "Location unknown";
+  if (km < 0.3)  return "Central Molyko";
+  if (km < 1)    return `${Math.round(km * 1000)} m from Molyko`;
+  return `${km.toFixed(1)} km from Molyko`;
 }

@@ -55,8 +55,6 @@ export default defineConfig({
         "/api": {
           target: "http://localhost:5000",
           changeOrigin: true,
-          // Strip the /api prefix before forwarding to Flask
-          rewrite: (path) => path.replace(/^\/api/, ""),
           // Forward cookies (required for httpOnly refresh_token)
           configure: (proxy) => {
             proxy.on("proxyReq", (_proxyReq, req) => {

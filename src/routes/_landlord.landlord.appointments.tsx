@@ -38,7 +38,7 @@ function LandlordAppointments() {
     <div className="space-y-6 max-w-2xl">
       <div>
         <h1 className="text-xl font-bold tracking-tight">Viewing Requests</h1>
-        <p className="text-sm text-muted-foreground">Respond to student viewing appointments.</p>
+        <p className="text-sm text-muted-foreground">Respond to tenant viewing requests.</p>
       </div>
 
       <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as AppointmentStatus | "all")}>

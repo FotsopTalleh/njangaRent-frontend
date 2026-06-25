@@ -9,18 +9,27 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as VisitsRouteImport } from './routes/visits'
 import { Route as VerifyPendingRouteImport } from './routes/verify-pending'
+import { Route as SsoCallbackRouteImport } from './routes/sso-callback'
 import { Route as SignupRouteImport } from './routes/signup'
+import { Route as SearchRouteImport } from './routes/search'
+import { Route as ProfileRouteImport } from './routes/profile'
+import { Route as MessagesRouteImport } from './routes/messages'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as ListingsRouteImport } from './routes/listings'
 import { Route as InviteRouteImport } from './routes/invite'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
+import { Route as ExploreRouteImport } from './routes/explore'
 import { Route as TenantRouteImport } from './routes/_tenant'
 import { Route as StudentRouteImport } from './routes/_student'
 import { Route as LandlordRouteImport } from './routes/_landlord'
 import { Route as AdminRouteImport } from './routes/_admin'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as ListingsIdRouteImport } from './routes/listings.$id'
+import { Route as PaymentsPayRouteImport } from './routes/payments/pay'
+import { Route as MessagesThreadIdRouteImport } from './routes/messages.$threadId'
+import { Route as ListingIdRouteImport } from './routes/listing.$id'
+import { Route as PaymentsReceiptPaymentIdRouteImport } from './routes/payments/receipt.$paymentId'
 import { Route as TenantTenantUploadRouteImport } from './routes/_tenant.tenant.upload'
 import { Route as TenantTenantReceiptsRouteImport } from './routes/_tenant.tenant.receipts'
 import { Route as TenantTenantPaymentsRouteImport } from './routes/_tenant.tenant.payments'
@@ -44,19 +53,44 @@ import { Route as AdminAdminMessagesRouteImport } from './routes/_admin.admin.me
 import { Route as AdminAdminListingsRouteImport } from './routes/_admin.admin.listings'
 import { Route as AdminAdminDashboardRouteImport } from './routes/_admin.admin.dashboard'
 import { Route as LandlordLandlordPaymentsReviewRouteImport } from './routes/_landlord.landlord.payments.review'
-import { Route as LandlordLandlordListingsCreateRouteImport } from './routes/_landlord.landlord.listings.create'
+import { Route as LandlordLandlordListingsCreateRouteImport } from './routes/_landlord.landlord.listings_.create'
 import { Route as AdminAdminVerificationsStudentsRouteImport } from './routes/_admin.admin.verifications.students'
 import { Route as AdminAdminVerificationsLandlordsRouteImport } from './routes/_admin.admin.verifications.landlords'
-import { Route as LandlordLandlordListingsIdEditRouteImport } from './routes/_landlord.landlord.listings.$id.edit'
+import { Route as LandlordLandlordListingsIdEditRouteImport } from './routes/_landlord.landlord.listings_.$id.edit'
 
+const VisitsRoute = VisitsRouteImport.update({
+  id: '/visits',
+  path: '/visits',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const VerifyPendingRoute = VerifyPendingRouteImport.update({
   id: '/verify-pending',
   path: '/verify-pending',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SsoCallbackRoute = SsoCallbackRouteImport.update({
+  id: '/sso-callback',
+  path: '/sso-callback',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
   path: '/signup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SearchRoute = SearchRouteImport.update({
+  id: '/search',
+  path: '/search',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProfileRoute = ProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MessagesRoute = MessagesRouteImport.update({
+  id: '/messages',
+  path: '/messages',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -77,6 +111,11 @@ const InviteRoute = InviteRouteImport.update({
 const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
   id: '/forgot-password',
   path: '/forgot-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ExploreRoute = ExploreRouteImport.update({
+  id: '/explore',
+  path: '/explore',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TenantRoute = TenantRouteImport.update({
@@ -100,11 +139,27 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ListingsIdRoute = ListingsIdRouteImport.update({
-  id: '/$id',
-  path: '/$id',
-  getParentRoute: () => ListingsRoute,
+const PaymentsPayRoute = PaymentsPayRouteImport.update({
+  id: '/payments/pay',
+  path: '/payments/pay',
+  getParentRoute: () => rootRouteImport,
 } as any)
+const MessagesThreadIdRoute = MessagesThreadIdRouteImport.update({
+  id: '/$threadId',
+  path: '/$threadId',
+  getParentRoute: () => MessagesRoute,
+} as any)
+const ListingIdRoute = ListingIdRouteImport.update({
+  id: '/listing/$id',
+  path: '/listing/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PaymentsReceiptPaymentIdRoute =
+  PaymentsReceiptPaymentIdRouteImport.update({
+    id: '/payments/receipt/$paymentId',
+    path: '/payments/receipt/$paymentId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const TenantTenantUploadRoute = TenantTenantUploadRouteImport.update({
   id: '/tenant/upload',
   path: '/tenant/upload',
@@ -231,9 +286,9 @@ const LandlordLandlordPaymentsReviewRoute =
   } as any)
 const LandlordLandlordListingsCreateRoute =
   LandlordLandlordListingsCreateRouteImport.update({
-    id: '/create',
-    path: '/create',
-    getParentRoute: () => LandlordLandlordListingsRoute,
+    id: '/landlord/listings_/create',
+    path: '/landlord/listings/create',
+    getParentRoute: () => LandlordRoute,
   } as any)
 const AdminAdminVerificationsStudentsRoute =
   AdminAdminVerificationsStudentsRouteImport.update({
@@ -249,20 +304,28 @@ const AdminAdminVerificationsLandlordsRoute =
   } as any)
 const LandlordLandlordListingsIdEditRoute =
   LandlordLandlordListingsIdEditRouteImport.update({
-    id: '/$id/edit',
-    path: '/$id/edit',
-    getParentRoute: () => LandlordLandlordListingsRoute,
+    id: '/landlord/listings_/$id/edit',
+    path: '/landlord/listings/$id/edit',
+    getParentRoute: () => LandlordRoute,
   } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/explore': typeof ExploreRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/invite': typeof InviteRoute
-  '/listings': typeof ListingsRouteWithChildren
+  '/listings': typeof ListingsRoute
   '/login': typeof LoginRoute
+  '/messages': typeof MessagesRouteWithChildren
+  '/profile': typeof ProfileRoute
+  '/search': typeof SearchRoute
   '/signup': typeof SignupRoute
+  '/sso-callback': typeof SsoCallbackRoute
   '/verify-pending': typeof VerifyPendingRoute
-  '/listings/$id': typeof ListingsIdRoute
+  '/visits': typeof VisitsRoute
+  '/listing/$id': typeof ListingIdRoute
+  '/messages/$threadId': typeof MessagesThreadIdRoute
+  '/payments/pay': typeof PaymentsPayRoute
   '/admin/dashboard': typeof AdminAdminDashboardRoute
   '/admin/listings': typeof AdminAdminListingsRoute
   '/admin/messages': typeof AdminAdminMessagesRoute
@@ -271,7 +334,7 @@ export interface FileRoutesByFullPath {
   '/landlord/appointments': typeof LandlordLandlordAppointmentsRoute
   '/landlord/dashboard': typeof LandlordLandlordDashboardRoute
   '/landlord/inbox': typeof LandlordLandlordInboxRoute
-  '/landlord/listings': typeof LandlordLandlordListingsRouteWithChildren
+  '/landlord/listings': typeof LandlordLandlordListingsRoute
   '/landlord/notifications': typeof LandlordLandlordNotificationsRoute
   '/landlord/properties': typeof LandlordLandlordPropertiesRoute
   '/landlord/receipts': typeof LandlordLandlordReceiptsRoute
@@ -285,6 +348,7 @@ export interface FileRoutesByFullPath {
   '/tenant/payments': typeof TenantTenantPaymentsRoute
   '/tenant/receipts': typeof TenantTenantReceiptsRoute
   '/tenant/upload': typeof TenantTenantUploadRoute
+  '/payments/receipt/$paymentId': typeof PaymentsReceiptPaymentIdRoute
   '/admin/verifications/landlords': typeof AdminAdminVerificationsLandlordsRoute
   '/admin/verifications/students': typeof AdminAdminVerificationsStudentsRoute
   '/landlord/listings/create': typeof LandlordLandlordListingsCreateRoute
@@ -293,13 +357,21 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/explore': typeof ExploreRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/invite': typeof InviteRoute
-  '/listings': typeof ListingsRouteWithChildren
+  '/listings': typeof ListingsRoute
   '/login': typeof LoginRoute
+  '/messages': typeof MessagesRouteWithChildren
+  '/profile': typeof ProfileRoute
+  '/search': typeof SearchRoute
   '/signup': typeof SignupRoute
+  '/sso-callback': typeof SsoCallbackRoute
   '/verify-pending': typeof VerifyPendingRoute
-  '/listings/$id': typeof ListingsIdRoute
+  '/visits': typeof VisitsRoute
+  '/listing/$id': typeof ListingIdRoute
+  '/messages/$threadId': typeof MessagesThreadIdRoute
+  '/payments/pay': typeof PaymentsPayRoute
   '/admin/dashboard': typeof AdminAdminDashboardRoute
   '/admin/listings': typeof AdminAdminListingsRoute
   '/admin/messages': typeof AdminAdminMessagesRoute
@@ -308,7 +380,7 @@ export interface FileRoutesByTo {
   '/landlord/appointments': typeof LandlordLandlordAppointmentsRoute
   '/landlord/dashboard': typeof LandlordLandlordDashboardRoute
   '/landlord/inbox': typeof LandlordLandlordInboxRoute
-  '/landlord/listings': typeof LandlordLandlordListingsRouteWithChildren
+  '/landlord/listings': typeof LandlordLandlordListingsRoute
   '/landlord/notifications': typeof LandlordLandlordNotificationsRoute
   '/landlord/properties': typeof LandlordLandlordPropertiesRoute
   '/landlord/receipts': typeof LandlordLandlordReceiptsRoute
@@ -322,6 +394,7 @@ export interface FileRoutesByTo {
   '/tenant/payments': typeof TenantTenantPaymentsRoute
   '/tenant/receipts': typeof TenantTenantReceiptsRoute
   '/tenant/upload': typeof TenantTenantUploadRoute
+  '/payments/receipt/$paymentId': typeof PaymentsReceiptPaymentIdRoute
   '/admin/verifications/landlords': typeof AdminAdminVerificationsLandlordsRoute
   '/admin/verifications/students': typeof AdminAdminVerificationsStudentsRoute
   '/landlord/listings/create': typeof LandlordLandlordListingsCreateRoute
@@ -335,13 +408,21 @@ export interface FileRoutesById {
   '/_landlord': typeof LandlordRouteWithChildren
   '/_student': typeof StudentRouteWithChildren
   '/_tenant': typeof TenantRouteWithChildren
+  '/explore': typeof ExploreRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/invite': typeof InviteRoute
-  '/listings': typeof ListingsRouteWithChildren
+  '/listings': typeof ListingsRoute
   '/login': typeof LoginRoute
+  '/messages': typeof MessagesRouteWithChildren
+  '/profile': typeof ProfileRoute
+  '/search': typeof SearchRoute
   '/signup': typeof SignupRoute
+  '/sso-callback': typeof SsoCallbackRoute
   '/verify-pending': typeof VerifyPendingRoute
-  '/listings/$id': typeof ListingsIdRoute
+  '/visits': typeof VisitsRoute
+  '/listing/$id': typeof ListingIdRoute
+  '/messages/$threadId': typeof MessagesThreadIdRoute
+  '/payments/pay': typeof PaymentsPayRoute
   '/_admin/admin/dashboard': typeof AdminAdminDashboardRoute
   '/_admin/admin/listings': typeof AdminAdminListingsRoute
   '/_admin/admin/messages': typeof AdminAdminMessagesRoute
@@ -350,7 +431,7 @@ export interface FileRoutesById {
   '/_landlord/landlord/appointments': typeof LandlordLandlordAppointmentsRoute
   '/_landlord/landlord/dashboard': typeof LandlordLandlordDashboardRoute
   '/_landlord/landlord/inbox': typeof LandlordLandlordInboxRoute
-  '/_landlord/landlord/listings': typeof LandlordLandlordListingsRouteWithChildren
+  '/_landlord/landlord/listings': typeof LandlordLandlordListingsRoute
   '/_landlord/landlord/notifications': typeof LandlordLandlordNotificationsRoute
   '/_landlord/landlord/properties': typeof LandlordLandlordPropertiesRoute
   '/_landlord/landlord/receipts': typeof LandlordLandlordReceiptsRoute
@@ -364,23 +445,32 @@ export interface FileRoutesById {
   '/_tenant/tenant/payments': typeof TenantTenantPaymentsRoute
   '/_tenant/tenant/receipts': typeof TenantTenantReceiptsRoute
   '/_tenant/tenant/upload': typeof TenantTenantUploadRoute
+  '/payments/receipt/$paymentId': typeof PaymentsReceiptPaymentIdRoute
   '/_admin/admin/verifications/landlords': typeof AdminAdminVerificationsLandlordsRoute
   '/_admin/admin/verifications/students': typeof AdminAdminVerificationsStudentsRoute
-  '/_landlord/landlord/listings/create': typeof LandlordLandlordListingsCreateRoute
+  '/_landlord/landlord/listings_/create': typeof LandlordLandlordListingsCreateRoute
   '/_landlord/landlord/payments/review': typeof LandlordLandlordPaymentsReviewRoute
-  '/_landlord/landlord/listings/$id/edit': typeof LandlordLandlordListingsIdEditRoute
+  '/_landlord/landlord/listings_/$id/edit': typeof LandlordLandlordListingsIdEditRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/explore'
     | '/forgot-password'
     | '/invite'
     | '/listings'
     | '/login'
+    | '/messages'
+    | '/profile'
+    | '/search'
     | '/signup'
+    | '/sso-callback'
     | '/verify-pending'
-    | '/listings/$id'
+    | '/visits'
+    | '/listing/$id'
+    | '/messages/$threadId'
+    | '/payments/pay'
     | '/admin/dashboard'
     | '/admin/listings'
     | '/admin/messages'
@@ -403,6 +493,7 @@ export interface FileRouteTypes {
     | '/tenant/payments'
     | '/tenant/receipts'
     | '/tenant/upload'
+    | '/payments/receipt/$paymentId'
     | '/admin/verifications/landlords'
     | '/admin/verifications/students'
     | '/landlord/listings/create'
@@ -411,13 +502,21 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/explore'
     | '/forgot-password'
     | '/invite'
     | '/listings'
     | '/login'
+    | '/messages'
+    | '/profile'
+    | '/search'
     | '/signup'
+    | '/sso-callback'
     | '/verify-pending'
-    | '/listings/$id'
+    | '/visits'
+    | '/listing/$id'
+    | '/messages/$threadId'
+    | '/payments/pay'
     | '/admin/dashboard'
     | '/admin/listings'
     | '/admin/messages'
@@ -440,6 +539,7 @@ export interface FileRouteTypes {
     | '/tenant/payments'
     | '/tenant/receipts'
     | '/tenant/upload'
+    | '/payments/receipt/$paymentId'
     | '/admin/verifications/landlords'
     | '/admin/verifications/students'
     | '/landlord/listings/create'
@@ -452,13 +552,21 @@ export interface FileRouteTypes {
     | '/_landlord'
     | '/_student'
     | '/_tenant'
+    | '/explore'
     | '/forgot-password'
     | '/invite'
     | '/listings'
     | '/login'
+    | '/messages'
+    | '/profile'
+    | '/search'
     | '/signup'
+    | '/sso-callback'
     | '/verify-pending'
-    | '/listings/$id'
+    | '/visits'
+    | '/listing/$id'
+    | '/messages/$threadId'
+    | '/payments/pay'
     | '/_admin/admin/dashboard'
     | '/_admin/admin/listings'
     | '/_admin/admin/messages'
@@ -481,11 +589,12 @@ export interface FileRouteTypes {
     | '/_tenant/tenant/payments'
     | '/_tenant/tenant/receipts'
     | '/_tenant/tenant/upload'
+    | '/payments/receipt/$paymentId'
     | '/_admin/admin/verifications/landlords'
     | '/_admin/admin/verifications/students'
-    | '/_landlord/landlord/listings/create'
+    | '/_landlord/landlord/listings_/create'
     | '/_landlord/landlord/payments/review'
-    | '/_landlord/landlord/listings/$id/edit'
+    | '/_landlord/landlord/listings_/$id/edit'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -494,16 +603,32 @@ export interface RootRouteChildren {
   LandlordRoute: typeof LandlordRouteWithChildren
   StudentRoute: typeof StudentRouteWithChildren
   TenantRoute: typeof TenantRouteWithChildren
+  ExploreRoute: typeof ExploreRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   InviteRoute: typeof InviteRoute
-  ListingsRoute: typeof ListingsRouteWithChildren
+  ListingsRoute: typeof ListingsRoute
   LoginRoute: typeof LoginRoute
+  MessagesRoute: typeof MessagesRouteWithChildren
+  ProfileRoute: typeof ProfileRoute
+  SearchRoute: typeof SearchRoute
   SignupRoute: typeof SignupRoute
+  SsoCallbackRoute: typeof SsoCallbackRoute
   VerifyPendingRoute: typeof VerifyPendingRoute
+  VisitsRoute: typeof VisitsRoute
+  ListingIdRoute: typeof ListingIdRoute
+  PaymentsPayRoute: typeof PaymentsPayRoute
+  PaymentsReceiptPaymentIdRoute: typeof PaymentsReceiptPaymentIdRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/visits': {
+      id: '/visits'
+      path: '/visits'
+      fullPath: '/visits'
+      preLoaderRoute: typeof VisitsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/verify-pending': {
       id: '/verify-pending'
       path: '/verify-pending'
@@ -511,11 +636,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof VerifyPendingRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/sso-callback': {
+      id: '/sso-callback'
+      path: '/sso-callback'
+      fullPath: '/sso-callback'
+      preLoaderRoute: typeof SsoCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/signup': {
       id: '/signup'
       path: '/signup'
       fullPath: '/signup'
       preLoaderRoute: typeof SignupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/search': {
+      id: '/search'
+      path: '/search'
+      fullPath: '/search'
+      preLoaderRoute: typeof SearchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/profile': {
+      id: '/profile'
+      path: '/profile'
+      fullPath: '/profile'
+      preLoaderRoute: typeof ProfileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/messages': {
+      id: '/messages'
+      path: '/messages'
+      fullPath: '/messages'
+      preLoaderRoute: typeof MessagesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -544,6 +697,13 @@ declare module '@tanstack/react-router' {
       path: '/forgot-password'
       fullPath: '/forgot-password'
       preLoaderRoute: typeof ForgotPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/explore': {
+      id: '/explore'
+      path: '/explore'
+      fullPath: '/explore'
+      preLoaderRoute: typeof ExploreRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_tenant': {
@@ -581,12 +741,33 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/listings/$id': {
-      id: '/listings/$id'
-      path: '/$id'
-      fullPath: '/listings/$id'
-      preLoaderRoute: typeof ListingsIdRouteImport
-      parentRoute: typeof ListingsRoute
+    '/payments/pay': {
+      id: '/payments/pay'
+      path: '/payments/pay'
+      fullPath: '/payments/pay'
+      preLoaderRoute: typeof PaymentsPayRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/messages/$threadId': {
+      id: '/messages/$threadId'
+      path: '/$threadId'
+      fullPath: '/messages/$threadId'
+      preLoaderRoute: typeof MessagesThreadIdRouteImport
+      parentRoute: typeof MessagesRoute
+    }
+    '/listing/$id': {
+      id: '/listing/$id'
+      path: '/listing/$id'
+      fullPath: '/listing/$id'
+      preLoaderRoute: typeof ListingIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/payments/receipt/$paymentId': {
+      id: '/payments/receipt/$paymentId'
+      path: '/payments/receipt/$paymentId'
+      fullPath: '/payments/receipt/$paymentId'
+      preLoaderRoute: typeof PaymentsReceiptPaymentIdRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_tenant/tenant/upload': {
       id: '/_tenant/tenant/upload'
@@ -749,12 +930,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LandlordLandlordPaymentsReviewRouteImport
       parentRoute: typeof LandlordRoute
     }
-    '/_landlord/landlord/listings/create': {
-      id: '/_landlord/landlord/listings/create'
-      path: '/create'
+    '/_landlord/landlord/listings_/create': {
+      id: '/_landlord/landlord/listings_/create'
+      path: '/landlord/listings/create'
       fullPath: '/landlord/listings/create'
       preLoaderRoute: typeof LandlordLandlordListingsCreateRouteImport
-      parentRoute: typeof LandlordLandlordListingsRoute
+      parentRoute: typeof LandlordRoute
     }
     '/_admin/admin/verifications/students': {
       id: '/_admin/admin/verifications/students'
@@ -770,12 +951,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminAdminVerificationsLandlordsRouteImport
       parentRoute: typeof AdminRoute
     }
-    '/_landlord/landlord/listings/$id/edit': {
-      id: '/_landlord/landlord/listings/$id/edit'
-      path: '/$id/edit'
+    '/_landlord/landlord/listings_/$id/edit': {
+      id: '/_landlord/landlord/listings_/$id/edit'
+      path: '/landlord/listings/$id/edit'
       fullPath: '/landlord/listings/$id/edit'
       preLoaderRoute: typeof LandlordLandlordListingsIdEditRouteImport
-      parentRoute: typeof LandlordLandlordListingsRoute
+      parentRoute: typeof LandlordRoute
     }
   }
 }
@@ -802,44 +983,32 @@ const AdminRouteChildren: AdminRouteChildren = {
 
 const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 
-interface LandlordLandlordListingsRouteChildren {
-  LandlordLandlordListingsCreateRoute: typeof LandlordLandlordListingsCreateRoute
-  LandlordLandlordListingsIdEditRoute: typeof LandlordLandlordListingsIdEditRoute
-}
-
-const LandlordLandlordListingsRouteChildren: LandlordLandlordListingsRouteChildren =
-  {
-    LandlordLandlordListingsCreateRoute: LandlordLandlordListingsCreateRoute,
-    LandlordLandlordListingsIdEditRoute: LandlordLandlordListingsIdEditRoute,
-  }
-
-const LandlordLandlordListingsRouteWithChildren =
-  LandlordLandlordListingsRoute._addFileChildren(
-    LandlordLandlordListingsRouteChildren,
-  )
-
 interface LandlordRouteChildren {
   LandlordLandlordAppointmentsRoute: typeof LandlordLandlordAppointmentsRoute
   LandlordLandlordDashboardRoute: typeof LandlordLandlordDashboardRoute
   LandlordLandlordInboxRoute: typeof LandlordLandlordInboxRoute
-  LandlordLandlordListingsRoute: typeof LandlordLandlordListingsRouteWithChildren
+  LandlordLandlordListingsRoute: typeof LandlordLandlordListingsRoute
   LandlordLandlordNotificationsRoute: typeof LandlordLandlordNotificationsRoute
   LandlordLandlordPropertiesRoute: typeof LandlordLandlordPropertiesRoute
   LandlordLandlordReceiptsRoute: typeof LandlordLandlordReceiptsRoute
   LandlordLandlordTenantsRoute: typeof LandlordLandlordTenantsRoute
+  LandlordLandlordListingsCreateRoute: typeof LandlordLandlordListingsCreateRoute
   LandlordLandlordPaymentsReviewRoute: typeof LandlordLandlordPaymentsReviewRoute
+  LandlordLandlordListingsIdEditRoute: typeof LandlordLandlordListingsIdEditRoute
 }
 
 const LandlordRouteChildren: LandlordRouteChildren = {
   LandlordLandlordAppointmentsRoute: LandlordLandlordAppointmentsRoute,
   LandlordLandlordDashboardRoute: LandlordLandlordDashboardRoute,
   LandlordLandlordInboxRoute: LandlordLandlordInboxRoute,
-  LandlordLandlordListingsRoute: LandlordLandlordListingsRouteWithChildren,
+  LandlordLandlordListingsRoute: LandlordLandlordListingsRoute,
   LandlordLandlordNotificationsRoute: LandlordLandlordNotificationsRoute,
   LandlordLandlordPropertiesRoute: LandlordLandlordPropertiesRoute,
   LandlordLandlordReceiptsRoute: LandlordLandlordReceiptsRoute,
   LandlordLandlordTenantsRoute: LandlordLandlordTenantsRoute,
+  LandlordLandlordListingsCreateRoute: LandlordLandlordListingsCreateRoute,
   LandlordLandlordPaymentsReviewRoute: LandlordLandlordPaymentsReviewRoute,
+  LandlordLandlordListingsIdEditRoute: LandlordLandlordListingsIdEditRoute,
 }
 
 const LandlordRouteWithChildren = LandlordRoute._addFileChildren(
@@ -882,16 +1051,16 @@ const TenantRouteChildren: TenantRouteChildren = {
 const TenantRouteWithChildren =
   TenantRoute._addFileChildren(TenantRouteChildren)
 
-interface ListingsRouteChildren {
-  ListingsIdRoute: typeof ListingsIdRoute
+interface MessagesRouteChildren {
+  MessagesThreadIdRoute: typeof MessagesThreadIdRoute
 }
 
-const ListingsRouteChildren: ListingsRouteChildren = {
-  ListingsIdRoute: ListingsIdRoute,
+const MessagesRouteChildren: MessagesRouteChildren = {
+  MessagesThreadIdRoute: MessagesThreadIdRoute,
 }
 
-const ListingsRouteWithChildren = ListingsRoute._addFileChildren(
-  ListingsRouteChildren,
+const MessagesRouteWithChildren = MessagesRoute._addFileChildren(
+  MessagesRouteChildren,
 )
 
 const rootRouteChildren: RootRouteChildren = {
@@ -900,12 +1069,21 @@ const rootRouteChildren: RootRouteChildren = {
   LandlordRoute: LandlordRouteWithChildren,
   StudentRoute: StudentRouteWithChildren,
   TenantRoute: TenantRouteWithChildren,
+  ExploreRoute: ExploreRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
   InviteRoute: InviteRoute,
-  ListingsRoute: ListingsRouteWithChildren,
+  ListingsRoute: ListingsRoute,
   LoginRoute: LoginRoute,
+  MessagesRoute: MessagesRouteWithChildren,
+  ProfileRoute: ProfileRoute,
+  SearchRoute: SearchRoute,
   SignupRoute: SignupRoute,
+  SsoCallbackRoute: SsoCallbackRoute,
   VerifyPendingRoute: VerifyPendingRoute,
+  VisitsRoute: VisitsRoute,
+  ListingIdRoute: ListingIdRoute,
+  PaymentsPayRoute: PaymentsPayRoute,
+  PaymentsReceiptPaymentIdRoute: PaymentsReceiptPaymentIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

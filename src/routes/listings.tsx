@@ -1,23 +1,31 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Building2, Search, ArrowRight, MapPin, ShieldCheck, MessageSquare } from "lucide-react";
+import { Building2, Search, Home } from "lucide-react";
 import { motion } from "framer-motion";
 import { ListingCard } from "@/components/ListingCard";
 import { listingsApi } from "@/api/listings.api";
 import { Button } from "@/components/ui/button";
 import { BrandMark } from "@/components/layout/AppShell";
 import { useAuthStore } from "@/store/authStore";
-
-export const Route = createFileRoute("/listings")({
-  component: ListingsBrowse,
-});
+import { paginateDummyListings } from "@/data/dummyListings";
 
 // ── Import ListingFilters inline (avoid circular for this public route)
 import { ListingFilters } from "@/components/ListingFilters";
 import type { BrowseListingsParams } from "@/api/listings.api";
 
+export const Route = createFileRoute("/listings")({
+  head: () => ({
+    meta: [
+      { title: "Browse Listings — NjangaRent Buea" },
+      { name: "description", content: "Find verified rooms, studios, and apartments across Molyko, Bonduma, Great Soppo, and all neighbourhoods in Buea, Cameroon." },
+    ],
+  }),
+  component: ListingsBrowse,
+});
+
 function ListingsBrowse() {
+  const user = useAuthStore((s) => s.user);
   const [params, setParams] = useState<BrowseListingsParams>({
     sort: "newest",
     page: 1,
@@ -28,10 +36,15 @@ function ListingsBrowse() {
     queryKey: ["listings", params],
     queryFn:  () => listingsApi.browse(params),
     staleTime: 30_000,
+    retry: 1,
   });
 
-  const listings = data?.data ?? [];
-  const pagination = data?.pagination;
+  // Fallback to dummy data when backend is unavailable
+  const useDummy = isError || (!isLoading && !data);
+  const dummyResult = useDummy ? paginateDummyListings(params) : null;
+
+  const listings   = useDummy ? (dummyResult?.data ?? []) : (data?.data ?? []);
+  const pagination = useDummy ? dummyResult?.pagination : data?.pagination;
 
   return (
     <div className="min-h-screen bg-background">
@@ -40,12 +53,26 @@ function ListingsBrowse() {
         <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between gap-4">
           <BrandMark />
           <div className="flex items-center gap-3">
-            <Link to="/login" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-              Sign in
-            </Link>
-            <Button asChild size="sm" className="rounded-xl">
-              <Link to="/signup">Get started</Link>
-            </Button>
+            {user ? (
+              <Button asChild size="sm" className="rounded-xl">
+                <Link to={
+                  user.role === "landlord" ? "/landlord/dashboard" :
+                  user.role === "admin"    ? "/admin/dashboard"    :
+                  "/tenant/dashboard"
+                }>
+                  My dashboard
+                </Link>
+              </Button>
+            ) : (
+              <>
+                <Link to="/login" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                  Sign in
+                </Link>
+                <Button asChild size="sm" className="rounded-xl">
+                  <Link to="/signup">Get started</Link>
+                </Button>
+              </>
+            )}
           </div>
         </div>
       </header>
@@ -53,12 +80,16 @@ function ListingsBrowse() {
       <main className="max-w-6xl mx-auto px-4 py-8">
         <div className="mb-8">
           <h1 className="text-2xl font-bold tracking-tight text-foreground mb-1">
-            Find your room in Buea
+            Find your home in Buea
           </h1>
           <p className="text-muted-foreground text-sm">
             {pagination?.total != null
-              ? `${pagination.total} listings near University of Buea`
-              : "Browse verified housing near UB"}
+              ? `${pagination.total} verified properties across Buea`
+              : "Browse verified housing across Buea"
+            }
+            {useDummy && (
+              <span className="ml-2 text-xs text-muted-foreground/60">(demo listings)</span>
+            )}
           </p>
         </div>
 
@@ -83,14 +114,7 @@ function ListingsBrowse() {
           </div>
         )}
 
-        {isError && (
-          <div className="text-center py-16 text-muted-foreground" role="alert">
-            <Building2 className="h-10 w-10 mx-auto mb-3 opacity-40" aria-hidden="true" />
-            <p>Could not load listings. Please try again.</p>
-          </div>
-        )}
-
-        {!isLoading && !isError && listings.length === 0 && (
+        {!isLoading && listings.length === 0 && (
           <div className="text-center py-16 text-muted-foreground">
             <Search className="h-10 w-10 mx-auto mb-3 opacity-40" aria-hidden="true" />
             <p className="font-medium">No listings match your filters</p>
@@ -98,7 +122,7 @@ function ListingsBrowse() {
           </div>
         )}
 
-        {!isLoading && !isError && listings.length > 0 && (
+        {!isLoading && listings.length > 0 && (
           <>
             <motion.div
               initial={{ opacity: 0 }}

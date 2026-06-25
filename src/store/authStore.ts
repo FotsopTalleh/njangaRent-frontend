@@ -18,29 +18,58 @@ export interface User {
   matricNumber?: string;
 }
 
+/** Map each role to its dashboard route. */
+export function dashboardForRole(role: UserRole): string {
+  switch (role) {
+    case "landlord": return "/landlord/dashboard";
+    case "student":  return "/student/dashboard";
+    case "tenant":   return "/student/dashboard"; // tenants map to student dashboard
+    case "admin":    return "/admin/dashboard";
+  }
+}
+
 interface AuthState {
   user: User | null;
-  accessToken: string | null;
+  /** True only while Clerk confirms an active session. */
+  sessionActive: boolean;
   // ── Actions ────────────────────────────────────────────────────────────────
+  setUser: (user: User) => void;
+  setSessionActive: (active: boolean) => void;
+  clearSession: () => void;
+  // ── Deprecated compat shims ────────────────────────────────────────────────
+  /** @deprecated — Clerk manages tokens per-request now. */
+  accessToken: string | null;
+  /** @deprecated — use setUser */
   setAuth: (user: User, accessToken: string) => void;
-  setAccessToken: (token: string) => void;   // called by silent refresh
+  /** @deprecated — tokens are managed by Clerk */
+  setAccessToken: (token: string) => void;
+  /** @deprecated — use clearSession */
   logout: () => void;
-  // ── Legacy compat ──────────────────────────────────────────────────────────
-  /** @deprecated use accessToken */
+  /** @deprecated */
   token: string | null;
 }
 
 export const useAuthStore = create<AuthState>()(
   persist(
     (set, get) => ({
-      user:        null,
-      accessToken: null,
-      get token()  { return get().accessToken; },   // backward compat
+      user:          null,
+      sessionActive: false,
+      accessToken:   null,
+      get token()    { return null; }, // tokens are managed by Clerk, not stored
 
-      setAuth: (user, accessToken) => set({ user, accessToken }),
-      setAccessToken: (accessToken) => set({ accessToken }),
-      logout: () => set({ user: null, accessToken: null }),
+      setUser: (user) => set({ user }),
+      setSessionActive: (active) => set({ sessionActive: active }),
+      clearSession: () => set({ user: null, sessionActive: false, accessToken: null }),
+
+      // ── Deprecated compat shims ──────────────────────────────────────────
+      setAuth: (user, _accessToken) => set({ user, sessionActive: true, accessToken: null }),
+      setAccessToken: (_token) => { /* no-op: Clerk handles tokens */ },
+      logout: () => set({ user: null, sessionActive: false, accessToken: null }),
     }),
-    { name: "njangrent-auth" },
+    {
+      name: "njangrent-auth",
+      // Only persist user data, not session state (Clerk is source of truth)
+      partialize: (state) => ({ user: state.user }),
+    },
   ),
 );

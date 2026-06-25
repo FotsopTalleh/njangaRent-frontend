@@ -1,0 +1,59 @@
+/* ─────────────────────────────────────────────────────────────────────────
+   NjangaRent Design Tokens
+   Defines brand CSS variables AND maps them to Tailwind-consumable names
+   ───────────────────────────────────────────────────────────────────────── */
+:root {
+  /* Brand Palette */
+  --brand-primary:        #1B4332;
+  --brand-primary-hover:  #2D6A4F;
+  --brand-primary-light:  #EAF4EE;
+  --brand-primary-border: #B7D9C4;
+  --brand-accent:         #D4A017;
+  --brand-accent-soft:    #FDF3D0;
+
+  /* Surfaces */
+  --surface-base:   #F9F7F2;
+  --surface-card:   #FFFFFF;
+
+  /* Text */
+  --text-primary:   #1A1A18;
+  --text-secondary: #6B6B68;
+  --text-muted:     #A8A8A5;
+
+  /* Borders */
+  --border-default: #E8E4DC;
+  --border-strong:  #D4D0C8;
+
+  /* Radii */
+  --radius-sm:   8px;
+  --radius-md:   12px;
+  --radius-lg:   16px;
+  --radius-pill: 999px;
+}
+
+/* ── Tailwind utility bridges ─────────────────────────────────────────── */
+/* Backgrounds */
+.bg-surface-base   { background-color: var(--surface-base) !important; }
+.bg-surface-card   { background-color: var(--surface-card) !important; }
+.bg-brand-primary  { background-color: var(--brand-primary) !important; }
+.bg-brand-accent   { background-color: var(--brand-accent) !important; }
+.bg-brand-primary-light { background-color: var(--brand-primary-light) !important; }
+.bg-brand-accent-soft   { background-color: var(--brand-accent-soft) !important; }
+
+/* Borders */
+.border-border-default { border-color: var(--border-default) !important; }
+.border-border-strong  { border-color: var(--border-strong) !important; }
+.border-brand-primary  { border-color: var(--brand-primary) !important; }
+.border-brand-primary-border { border-color: var(--brand-primary-border) !important; }
+.border-brand-accent   { border-color: var(--brand-accent) !important; }
+
+/* Text */
+.text-brand-primary   { color: var(--brand-primary) !important; }
+.text-brand-accent    { color: var(--brand-accent) !important; }
+.text-text-primary    { color: var(--text-primary) !important; }
+.text-text-secondary  { color: var(--text-secondary) !important; }
+.text-text-muted      { color: var(--text-muted) !important; }
+.text-brand-primary-border { color: var(--brand-primary-border) !important; }
+
+/* Misc */
+.ring-brand-primary   { --tw-ring-color: var(--brand-primary) !important; }

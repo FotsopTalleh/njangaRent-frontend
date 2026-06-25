@@ -11,6 +11,7 @@ import { useAuthStore } from "@/store/authStore";
 import { useThemeStore } from "@/store/themeStore";
 import { useNotificationStore } from "@/store/notificationStore";
 import { Button } from "@/components/ui/button";
+import { useClerk } from "@clerk/clerk-react";
 
 interface NavItem {
   to: string;
@@ -28,7 +29,7 @@ const landlordNav: NavItem[] = [
   { to: "/landlord/dashboard",       label: "Dashboard",     icon: LayoutDashboard },
   { to: "/landlord/listings",        label: "Listings",      icon: Building2 },
   { to: "/landlord/properties",      label: "Properties",    icon: MapPin },
-  { to: "/landlord/tenants",         label: "Students",      icon: Users },
+  { to: "/landlord/tenants",         label: "Tenants",       icon: Users },
   { to: "/landlord/appointments",    label: "Appointments",  icon: Calendar },
   { to: "/landlord/inbox",           label: "Inbox",         icon: MessageSquare, badge: "unread" },
   { to: "/landlord/payments/review", label: "Payments",      icon: FileCheck },
@@ -59,7 +60,7 @@ const tenantNav: NavItem[] = [
 const adminNav: NavItem[] = [
   { to: "/admin/dashboard",                  label: "Dashboard",          icon: BarChart3 },
   { to: "/admin/verifications/landlords",    label: "Landlord Verify",    icon: ShieldCheck },
-  { to: "/admin/verifications/students",     label: "Student Verify",     icon: Users },
+  { to: "/admin/verifications/students",     label: "Tenant Verify",      icon: Users },
   { to: "/admin/listings",                   label: "Listings",           icon: Building2 },
   { to: "/admin/users",                      label: "Users",              icon: Users },
   { to: "/admin/payments",                   label: "Payments",           icon: CreditCard },
@@ -79,10 +80,17 @@ function navFor(variant: AppShellProps["variant"]) {
 export function AppShell({ variant, children }: AppShellProps) {
   const nav = navFor(variant);
   const path = useRouterState({ select: (s) => s.location.pathname });
-  const { user, logout } = useAuthStore();
+  const user = useAuthStore((s) => s.user);
   const { theme, toggle, init } = useThemeStore();
   const unread = useNotificationStore((s) => s.unreadCount());
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { signOut } = useClerk();
+
+  const handleSignOut = async () => {
+    setMobileOpen(false);
+    await signOut();
+    // AuthSync will detect isSignedIn=false, clearSession(), and redirect to /login
+  };
 
   useEffect(() => init(), [init]);
 
@@ -129,7 +137,7 @@ export function AppShell({ variant, children }: AppShellProps) {
               <p className="text-xs text-sidebar-foreground/60 truncate capitalize">{user?.role}</p>
             </div>
             <button
-              onClick={logout}
+              onClick={handleSignOut}
               aria-label="Sign out"
               className="p-2 rounded-lg hover:bg-sidebar-accent transition-colors text-sidebar-foreground/60 hover:text-sidebar-foreground"
             >
@@ -239,7 +247,7 @@ export function AppShell({ variant, children }: AppShellProps) {
                 })}
               </nav>
               <button
-                onClick={() => { logout(); setMobileOpen(false); }}
+                onClick={handleSignOut}
                 className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-medium hover:bg-sidebar-accent text-sidebar-foreground/80"
               >
                 <LogOut className="h-4 w-4" aria-hidden="true" /> Sign out

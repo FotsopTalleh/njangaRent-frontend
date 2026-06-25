@@ -38,7 +38,7 @@ export function ListingCard({ listing, className }: ListingCardProps) {
 
   return (
     <Link
-      to="/listings/$id"
+      to="/listing/$id"
       params={{ id: listing.id }}
       className={cn(
         "group block rounded-2xl overflow-hidden border border-border bg-card shadow-soft hover:shadow-elevated transition-all duration-200 hover:-translate-y-0.5",
