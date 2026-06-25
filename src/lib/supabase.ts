@@ -90,4 +90,93 @@ export const supabaseListings = {
     if (error) throw error;
     return normaliseListing(data);
   },
+
+  /** Create a new listing with image uploads directly to Supabase */
+  create: async (payload: {
+    landlordId: string;
+    title: string;
+    description: string;
+    propertyType: string;
+    rentAmount: number;
+    rentPeriod: string;
+    availableFrom: string;
+    amenities: string[];
+    rules: string;
+    maxOccupants: number;
+    lat?: number;
+    lng?: number;
+    exteriorFiles: File[];
+    roomFiles: File[];
+  }, onProgress?: (pct: number) => void) => {
+    
+    // Helper to upload a file to Supabase Storage
+    const uploadFile = async (file: File, folder: string) => {
+      const ext = file.name.split('.').pop();
+      const fileName = `${folder}/${Date.now()}_${Math.random().toString(36).substring(7)}.${ext}`;
+      
+      const { data, error } = await supabase.storage
+        .from("listing-images")
+        .upload(fileName, file);
+        
+      if (error) throw error;
+      
+      const { data: publicUrlData } = supabase.storage
+        .from("listing-images")
+        .getPublicUrl(fileName);
+        
+      return publicUrlData.publicUrl;
+    };
+
+    const totalFiles = payload.exteriorFiles.length + payload.roomFiles.length;
+    let completedFiles = 0;
+
+    const reportProgress = () => {
+      completedFiles++;
+      if (onProgress && totalFiles > 0) {
+        onProgress(Math.round((completedFiles / totalFiles) * 50)); // 50% for uploads
+      }
+    };
+
+    const exteriorImages = await Promise.all(
+      payload.exteriorFiles.map(async (f) => {
+        const url = await uploadFile(f, "exterior");
+        reportProgress();
+        return url;
+      })
+    );
+
+    const roomImages = await Promise.all(
+      payload.roomFiles.map(async (f) => {
+        const url = await uploadFile(f, "rooms");
+        reportProgress();
+        return url;
+      })
+    );
+    
+    if (onProgress) onProgress(75);
+
+    // Insert into Supabase
+    const { data, error } = await supabase.from("listings").insert({
+      landlord_id: payload.landlordId,
+      title: payload.title,
+      description: payload.description,
+      property_type: payload.propertyType,
+      rent_amount: payload.rentAmount,
+      rent_period: payload.rentPeriod,
+      available_from: payload.availableFrom,
+      amenities: payload.amenities,
+      rules: payload.rules,
+      max_occupants: payload.maxOccupants,
+      lat: payload.lat,
+      lng: payload.lng,
+      exterior_images: exteriorImages,
+      room_images: roomImages,
+      status: "pending_admin_review"
+    }).select().single();
+
+    if (error) throw error;
+    if (onProgress) onProgress(100);
+
+    return normaliseListing(data);
+  },
 };

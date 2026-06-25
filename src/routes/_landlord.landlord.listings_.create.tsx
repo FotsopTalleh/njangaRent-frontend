@@ -3,6 +3,8 @@ import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { Loader2, AlertCircle, ArrowLeft, CheckCircle2 } from "lucide-react";
 import { listingsApi } from "@/api/listings.api";
+import { supabaseListings } from "@/lib/supabase";
+import { useAuthStore } from "@/store/authStore";
 import { ImageUpload } from "@/components/ImageUpload";
 import { MapPicker } from "@/components/MapPicker";
 import { Button } from "@/components/ui/button";
@@ -36,6 +38,7 @@ const AMENITY_OPTIONS = [
 
 function CreateListing() {
   const navigate = useNavigate();
+  const user = useAuthStore((s) => s.user);
 
   // Core fields
   const [title,         setTitle]         = useState("");
@@ -60,29 +63,28 @@ function CreateListing() {
     );
 
   const create = useMutation({
-    mutationFn: () => {
+    mutationFn: async () => {
+      if (!user) throw new Error("You must be logged in to create a listing.");
       if (exteriorFiles.length === 0) {
         throw new Error("At least one exterior image is required.");
       }
 
-      const fd = new FormData();
-      fd.append("title",         title.trim());
-      fd.append("description",   description.trim());
-      fd.append("propertyType",  propertyType);
-      fd.append("rentAmount",    rentAmount);
-      fd.append("rentPeriod",    rentPeriod);
-      fd.append("availableFrom", availableFrom);
-      fd.append("maxOccupants",  maxOccupants);
-      fd.append("rules",         rules.trim());
-      fd.append("amenities",     amenities.join(","));
-      if (location) {
-        fd.append("lat", String(location.lat));
-        fd.append("lng", String(location.lng));
-      }
-      exteriorFiles.forEach((f) => fd.append("exteriorImages", f));
-      roomFiles.forEach((f) => fd.append("roomImages", f));
-
-      return listingsApi.create(fd, setUploadPct);
+      return supabaseListings.create({
+        landlordId: user.id,
+        title: title.trim(),
+        description: description.trim(),
+        propertyType: propertyType,
+        rentAmount: parseInt(rentAmount),
+        rentPeriod: rentPeriod,
+        availableFrom: availableFrom,
+        maxOccupants: parseInt(maxOccupants),
+        rules: rules.trim(),
+        amenities: amenities,
+        lat: location?.lat,
+        lng: location?.lng,
+        exteriorFiles,
+        roomFiles,
+      }, setUploadPct);
     },
     onSuccess: () => setCreated(true),
     onError: (err: { message?: string }) => setError(err?.message ?? "Failed to create listing."),
