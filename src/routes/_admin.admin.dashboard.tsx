@@ -194,7 +194,7 @@ function AdminDashboard() {
                     <span className="text-sm font-medium">New Listings</span>
                   </div>
                   <Badge variant="secondary" className="bg-blue-100 text-blue-700 hover:bg-blue-100 border-0">
-                    {stats?.pendingListings || 8} to review
+                    8 to review
                   </Badge>
                 </div>
 
