@@ -1,5 +1,9 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Building2, LayoutDashboard, LogOut, Menu, Moon, Sun, Users, Receipt, FileCheck, Bell } from "lucide-react";
+import {
+  Building2, LayoutDashboard, LogOut, Menu, Moon, Sun, Users, Receipt,
+  FileCheck, Bell, MessageSquare, Calendar, MapPin, ShieldCheck,
+  BarChart3, BookmarkCheck, Settings, CreditCard, Home,
+} from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -12,32 +16,68 @@ interface NavItem {
   to: string;
   label: string;
   icon: typeof LayoutDashboard;
+  badge?: "notifications" | "unread";
 }
 
 interface AppShellProps {
-  variant: "landlord" | "tenant";
+  variant: "landlord" | "tenant" | "student" | "admin";
   children: ReactNode;
 }
 
 const landlordNav: NavItem[] = [
-  { to: "/landlord/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/landlord/properties", label: "Properties", icon: Building2 },
-  { to: "/landlord/tenants", label: "Tenants", icon: Users },
-  { to: "/landlord/payments/review", label: "Payments", icon: FileCheck },
-  { to: "/landlord/receipts", label: "Receipts", icon: Receipt },
-  { to: "/landlord/notifications", label: "Notifications", icon: Bell },
+  { to: "/landlord/dashboard",       label: "Dashboard",     icon: LayoutDashboard },
+  { to: "/landlord/listings",        label: "Listings",      icon: Building2 },
+  { to: "/landlord/properties",      label: "Properties",    icon: MapPin },
+  { to: "/landlord/tenants",         label: "Students",      icon: Users },
+  { to: "/landlord/appointments",    label: "Appointments",  icon: Calendar },
+  { to: "/landlord/inbox",           label: "Inbox",         icon: MessageSquare, badge: "unread" },
+  { to: "/landlord/payments/review", label: "Payments",      icon: FileCheck },
+  { to: "/landlord/receipts",        label: "Receipts",      icon: Receipt },
+  { to: "/landlord/notifications",   label: "Notifications", icon: Bell, badge: "notifications" },
 ];
 
-const tenantNav: NavItem[] = [
-  { to: "/tenant/dashboard", label: "Home", icon: LayoutDashboard },
-  { to: "/tenant/upload", label: "Upload", icon: FileCheck },
-  { to: "/tenant/payments", label: "Payments", icon: Receipt },
-  { to: "/tenant/receipts", label: "Receipts", icon: Receipt },
-  { to: "/tenant/notifications", label: "Alerts", icon: Bell },
+const studentNav: NavItem[] = [
+  { to: "/student/dashboard",         label: "Home",          icon: Home },
+  { to: "/listings",                  label: "Browse",        icon: Building2 },
+  { to: "/student/listings/saved",    label: "Saved",         icon: BookmarkCheck },
+  { to: "/student/appointments",      label: "Appointments",  icon: Calendar },
+  { to: "/student/inbox",             label: "Inbox",         icon: MessageSquare, badge: "unread" },
+  { to: "/student/payments",          label: "Payments",      icon: CreditCard },
+  { to: "/student/receipts",          label: "Receipts",      icon: Receipt },
+  { to: "/student/notifications",     label: "Alerts",        icon: Bell, badge: "notifications" },
 ];
+
+// Legacy tenant nav — keeps existing routes functional
+const tenantNav: NavItem[] = [
+  { to: "/tenant/dashboard",     label: "Home",          icon: LayoutDashboard },
+  { to: "/tenant/upload",        label: "Upload",        icon: FileCheck },
+  { to: "/tenant/payments",      label: "Payments",      icon: Receipt },
+  { to: "/tenant/receipts",      label: "Receipts",      icon: Receipt },
+  { to: "/tenant/notifications", label: "Alerts",        icon: Bell },
+];
+
+const adminNav: NavItem[] = [
+  { to: "/admin/dashboard",                  label: "Dashboard",          icon: BarChart3 },
+  { to: "/admin/verifications/landlords",    label: "Landlord Verify",    icon: ShieldCheck },
+  { to: "/admin/verifications/students",     label: "Student Verify",     icon: Users },
+  { to: "/admin/listings",                   label: "Listings",           icon: Building2 },
+  { to: "/admin/users",                      label: "Users",              icon: Users },
+  { to: "/admin/payments",                   label: "Payments",           icon: CreditCard },
+  { to: "/admin/messages",                   label: "Messages",           icon: MessageSquare },
+  { to: "/admin/settings",                   label: "Settings",           icon: Settings },
+];
+
+function navFor(variant: AppShellProps["variant"]) {
+  switch (variant) {
+    case "landlord": return landlordNav;
+    case "student":  return studentNav;
+    case "tenant":   return tenantNav;
+    case "admin":    return adminNav;
+  }
+}
 
 export function AppShell({ variant, children }: AppShellProps) {
-  const nav = variant === "landlord" ? landlordNav : tenantNav;
+  const nav = navFor(variant);
   const path = useRouterState({ select: (s) => s.location.pathname });
   const { user, logout } = useAuthStore();
   const { theme, toggle, init } = useThemeStore();
@@ -53,7 +93,7 @@ export function AppShell({ variant, children }: AppShellProps) {
         <div className="h-16 flex items-center gap-2 px-6 border-b border-sidebar-border">
           <BrandMark />
         </div>
-        <nav className="flex-1 px-3 py-4 space-y-1">
+        <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
           {nav.map((item) => {
             const active = path === item.to || path.startsWith(item.to + "/");
             const Icon = item.icon;
@@ -65,14 +105,14 @@ export function AppShell({ variant, children }: AppShellProps) {
                   "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors",
                   active
                     ? "bg-sidebar-primary text-sidebar-primary-foreground"
-                    : "text-sidebar-foreground/80 hover:bg-sidebar-accent",
+                    : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground",
                 )}
               >
-                <Icon className="h-4 w-4" aria-hidden />
+                <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
                 <span className="flex-1">{item.label}</span>
-                {item.label === "Notifications" && unread > 0 && (
-                  <span className="text-[10px] font-semibold rounded-full bg-accent text-accent-foreground px-2 py-0.5">
-                    {unread}
+                {item.badge === "notifications" && unread > 0 && (
+                  <span className="text-[10px] font-semibold rounded-full bg-accent text-accent-foreground px-2 py-0.5 min-w-[20px] text-center">
+                    {unread > 99 ? "99+" : unread}
                   </span>
                 )}
               </Link>
@@ -81,19 +121,19 @@ export function AppShell({ variant, children }: AppShellProps) {
         </nav>
         <div className="p-3 border-t border-sidebar-border">
           <div className="flex items-center gap-3 px-2 py-2">
-            <div className="h-9 w-9 rounded-full bg-primary/15 text-primary flex items-center justify-center text-sm font-semibold">
+            <div className="h-9 w-9 rounded-full bg-sidebar-primary/20 text-sidebar-primary flex items-center justify-center text-sm font-semibold uppercase shrink-0">
               {user?.name?.[0] ?? "U"}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate">{user?.name}</p>
-              <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
+              <p className="text-sm font-medium truncate text-sidebar-foreground">{user?.name}</p>
+              <p className="text-xs text-sidebar-foreground/60 truncate capitalize">{user?.role}</p>
             </div>
             <button
               onClick={logout}
               aria-label="Sign out"
-              className="p-2 rounded-lg hover:bg-sidebar-accent transition-colors"
+              className="p-2 rounded-lg hover:bg-sidebar-accent transition-colors text-sidebar-foreground/60 hover:text-sidebar-foreground"
             >
-              <LogOut className="h-4 w-4" />
+              <LogOut className="h-4 w-4" aria-hidden="true" />
             </button>
           </div>
         </div>
@@ -105,9 +145,9 @@ export function AppShell({ variant, children }: AppShellProps) {
           <button
             className="lg:hidden p-2 -ml-2 rounded-lg hover:bg-muted"
             onClick={() => setMobileOpen(true)}
-            aria-label="Open menu"
+            aria-label="Open navigation menu"
           >
-            <Menu className="h-5 w-5" />
+            <Menu className="h-5 w-5" aria-hidden="true" />
           </button>
           <div className="lg:hidden">
             <BrandMark compact />
@@ -117,10 +157,10 @@ export function AppShell({ variant, children }: AppShellProps) {
             variant="ghost"
             size="icon"
             onClick={toggle}
-            aria-label="Toggle theme"
+            aria-label="Toggle dark mode"
             className="rounded-xl"
           >
-            {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            {theme === "dark" ? <Sun className="h-4 w-4" aria-hidden="true" /> : <Moon className="h-4 w-4" aria-hidden="true" />}
           </Button>
         </header>
 
@@ -135,8 +175,8 @@ export function AppShell({ variant, children }: AppShellProps) {
         </motion.main>
 
         {/* Mobile bottom nav */}
-        <nav className="lg:hidden fixed bottom-0 inset-x-0 z-40 border-t border-border bg-background/95 backdrop-blur">
-          <ul className="grid grid-cols-5">
+        <nav className="lg:hidden fixed bottom-0 inset-x-0 z-40 border-t border-border bg-background/95 backdrop-blur" aria-label="Mobile navigation">
+          <ul className="grid" style={{ gridTemplateColumns: `repeat(${Math.min(nav.length, 5)}, 1fr)` }}>
             {nav.slice(0, 5).map((item) => {
               const active = path === item.to || path.startsWith(item.to + "/");
               const Icon = item.icon;
@@ -145,11 +185,12 @@ export function AppShell({ variant, children }: AppShellProps) {
                   <Link
                     to={item.to}
                     className={cn(
-                      "flex flex-col items-center justify-center gap-1 py-2.5 text-[11px] font-medium",
+                      "flex flex-col items-center justify-center gap-1 py-2.5 text-[11px] font-medium relative",
                       active ? "text-primary" : "text-muted-foreground",
                     )}
+                    aria-current={active ? "page" : undefined}
                   >
-                    <Icon className="h-5 w-5" aria-hidden />
+                    <Icon className="h-5 w-5" aria-hidden="true" />
                     <span>{item.label}</span>
                   </Link>
                 </li>
@@ -161,7 +202,11 @@ export function AppShell({ variant, children }: AppShellProps) {
         {/* Mobile drawer */}
         {mobileOpen && (
           <div className="lg:hidden fixed inset-0 z-50">
-            <div className="absolute inset-0 bg-black/50" onClick={() => setMobileOpen(false)} />
+            <div
+              className="absolute inset-0 bg-black/50"
+              onClick={() => setMobileOpen(false)}
+              aria-hidden="true"
+            />
             <motion.aside
               initial={{ x: -300 }}
               animate={{ x: 0 }}
@@ -171,7 +216,7 @@ export function AppShell({ variant, children }: AppShellProps) {
               <div className="h-12 flex items-center px-2 mb-2">
                 <BrandMark />
               </div>
-              <nav className="flex-1 space-y-1">
+              <nav className="flex-1 space-y-0.5 overflow-y-auto">
                 {nav.map((item) => {
                   const active = path === item.to || path.startsWith(item.to + "/");
                   const Icon = item.icon;
@@ -184,23 +229,20 @@ export function AppShell({ variant, children }: AppShellProps) {
                         "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium",
                         active
                           ? "bg-sidebar-primary text-sidebar-primary-foreground"
-                          : "hover:bg-sidebar-accent",
+                          : "hover:bg-sidebar-accent text-sidebar-foreground/80",
                       )}
                     >
-                      <Icon className="h-4 w-4" />
+                      <Icon className="h-4 w-4" aria-hidden="true" />
                       {item.label}
                     </Link>
                   );
                 })}
               </nav>
               <button
-                onClick={() => {
-                  logout();
-                  setMobileOpen(false);
-                }}
-                className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-medium hover:bg-sidebar-accent"
+                onClick={() => { logout(); setMobileOpen(false); }}
+                className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-medium hover:bg-sidebar-accent text-sidebar-foreground/80"
               >
-                <LogOut className="h-4 w-4" /> Sign out
+                <LogOut className="h-4 w-4" aria-hidden="true" /> Sign out
               </button>
             </motion.aside>
           </div>
@@ -212,11 +254,13 @@ export function AppShell({ variant, children }: AppShellProps) {
 
 export function BrandMark({ compact = false }: { compact?: boolean }) {
   return (
-    <Link to="/" className="flex items-center gap-2 font-semibold tracking-tight">
-      <span className="h-8 w-8 rounded-xl bg-primary text-primary-foreground flex items-center justify-center">
-        <Building2 className="h-4 w-4" />
+    <Link to="/" className="flex items-center gap-2.5 font-semibold tracking-tight">
+      <span className="h-8 w-8 rounded-xl bg-accent flex items-center justify-center shrink-0">
+        <Home className="h-4 w-4 text-accent-foreground" aria-hidden="true" />
       </span>
-      {!compact && <span className="text-base">MyTenant</span>}
+      {!compact && (
+        <span className="text-base text-sidebar-foreground">NjangaRent</span>
+      )}
     </Link>
   );
 }

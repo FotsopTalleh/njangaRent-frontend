@@ -6,7 +6,6 @@ import { z } from "zod";
 import {
   Receipt,
   Download,
-  ExternalLink,
   Loader2,
   Search,
   Plus,
@@ -67,15 +66,15 @@ const manualSchema = z.object({
 });
 type ManualForm = z.infer<typeof manualSchema>;
 
-// Track which receipt is being acted on and what action
-type ActiveAction = { id: string; action: "view" | "download" } | null;
+// Track which receipt is being downloaded
+type ActiveAction = { id: string } | null;
 
 // ── Page ─────────────────────────────────────────────────────────────────────
 
 function ReceiptsPage() {
   const qc = useQueryClient();
-  const [search, setSearch]       = useState("");
-  const [active, setActive]       = useState<ActiveAction>(null);
+  const [search, setSearch]         = useState("");
+  const [active, setActive]         = useState<ActiveAction>(null);
   const [showManual, setShowManual] = useState(false);
 
   // ── Data fetching ─────────────────────────────────────────────────────────
@@ -99,21 +98,9 @@ function ReceiptsPage() {
     r.receiptNumber.toLowerCase().includes(search.toLowerCase())
   );
 
-  // ── View (open in new tab) ────────────────────────────────────────────────
-  const handleView = async (r: ReceiptType) => {
-    setActive({ id: r.id, action: "view" });
-    try {
-      await receiptsApi.openReceipt(r.id);
-    } catch {
-      toast.error("Could not open receipt. Please try again.");
-    } finally {
-      setActive(null);
-    }
-  };
-
-  // ── Download (save to disk) ───────────────────────────────────────────────
+  // ── One-click download ────────────────────────────────────────────────────
   const handleDownload = async (r: ReceiptType) => {
-    setActive({ id: r.id, action: "download" });
+    setActive({ id: r.id });
     try {
       await receiptsApi.downloadReceipt(r.id);
     } catch {
@@ -210,7 +197,7 @@ function ReceiptsPage() {
             <span className="text-right">Amount</span>
             <span className="text-right hidden sm:block">Date</span>
             <span className="hidden sm:block">Type</span>
-            <span />
+            <span className="text-right">PDF</span>
           </div>
 
           {/* Rows */}
@@ -220,7 +207,6 @@ function ReceiptsPage() {
                 key={r.id}
                 receipt={r}
                 active={active}
-                onView={() => handleView(r)}
                 onDownload={() => handleDownload(r)}
               />
             ))}
@@ -427,17 +413,13 @@ function ReceiptsPage() {
 function ReceiptRow({
   receipt: r,
   active,
-  onView,
   onDownload,
 }: {
   receipt: ReceiptType;
   active: ActiveAction;
-  onView: () => void;
   onDownload: () => void;
 }) {
-  const isViewing     = active?.id === r.id && active.action === "view";
-  const isDownloading = active?.id === r.id && active.action === "download";
-  const isBusy        = active?.id === r.id;
+  const isDownloading = active?.id === r.id;
 
   return (
     <li className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-4 items-center px-5 py-3.5">
@@ -480,29 +462,14 @@ function ReceiptRow({
         )}
       </div>
 
-      <div className="flex items-center gap-1">
-        {/* View in new tab */}
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8 rounded-lg"
-          onClick={onView}
-          disabled={isBusy}
-          title="View receipt in new tab"
-        >
-          {isViewing
-            ? <Loader2 className="h-4 w-4 animate-spin" />
-            : <ExternalLink className="h-4 w-4" />
-          }
-        </Button>
-
-        {/* Download */}
+      <div className="flex items-center">
+        {/* One-click download */}
         <Button
           variant="ghost"
           size="icon"
           className="h-8 w-8 rounded-lg"
           onClick={onDownload}
-          disabled={isBusy}
+          disabled={isDownloading}
           title="Download receipt PDF"
         >
           {isDownloading

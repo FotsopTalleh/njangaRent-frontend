@@ -9,25 +9,51 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as VerifyPendingRouteImport } from './routes/verify-pending'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as ListingsRouteImport } from './routes/listings'
 import { Route as InviteRouteImport } from './routes/invite'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as TenantRouteImport } from './routes/_tenant'
+import { Route as StudentRouteImport } from './routes/_student'
 import { Route as LandlordRouteImport } from './routes/_landlord'
+import { Route as AdminRouteImport } from './routes/_admin'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ListingsIdRouteImport } from './routes/listings.$id'
 import { Route as TenantTenantUploadRouteImport } from './routes/_tenant.tenant.upload'
 import { Route as TenantTenantReceiptsRouteImport } from './routes/_tenant.tenant.receipts'
 import { Route as TenantTenantPaymentsRouteImport } from './routes/_tenant.tenant.payments'
 import { Route as TenantTenantNotificationsRouteImport } from './routes/_tenant.tenant.notifications'
 import { Route as TenantTenantDashboardRouteImport } from './routes/_tenant.tenant.dashboard'
+import { Route as StudentStudentPaymentsRouteImport } from './routes/_student.student.payments'
+import { Route as StudentStudentInboxRouteImport } from './routes/_student.student.inbox'
+import { Route as StudentStudentDashboardRouteImport } from './routes/_student.student.dashboard'
+import { Route as StudentStudentAppointmentsRouteImport } from './routes/_student.student.appointments'
 import { Route as LandlordLandlordTenantsRouteImport } from './routes/_landlord.landlord.tenants'
 import { Route as LandlordLandlordReceiptsRouteImport } from './routes/_landlord.landlord.receipts'
 import { Route as LandlordLandlordPropertiesRouteImport } from './routes/_landlord.landlord.properties'
 import { Route as LandlordLandlordNotificationsRouteImport } from './routes/_landlord.landlord.notifications'
+import { Route as LandlordLandlordListingsRouteImport } from './routes/_landlord.landlord.listings'
+import { Route as LandlordLandlordInboxRouteImport } from './routes/_landlord.landlord.inbox'
 import { Route as LandlordLandlordDashboardRouteImport } from './routes/_landlord.landlord.dashboard'
+import { Route as LandlordLandlordAppointmentsRouteImport } from './routes/_landlord.landlord.appointments'
+import { Route as AdminAdminUsersRouteImport } from './routes/_admin.admin.users'
+import { Route as AdminAdminPaymentsRouteImport } from './routes/_admin.admin.payments'
+import { Route as AdminAdminMessagesRouteImport } from './routes/_admin.admin.messages'
+import { Route as AdminAdminListingsRouteImport } from './routes/_admin.admin.listings'
+import { Route as AdminAdminDashboardRouteImport } from './routes/_admin.admin.dashboard'
 import { Route as LandlordLandlordPaymentsReviewRouteImport } from './routes/_landlord.landlord.payments.review'
+import { Route as LandlordLandlordListingsCreateRouteImport } from './routes/_landlord.landlord.listings.create'
+import { Route as AdminAdminVerificationsStudentsRouteImport } from './routes/_admin.admin.verifications.students'
+import { Route as AdminAdminVerificationsLandlordsRouteImport } from './routes/_admin.admin.verifications.landlords'
+import { Route as LandlordLandlordListingsIdEditRouteImport } from './routes/_landlord.landlord.listings.$id.edit'
 
+const VerifyPendingRoute = VerifyPendingRouteImport.update({
+  id: '/verify-pending',
+  path: '/verify-pending',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
   path: '/signup',
@@ -36,6 +62,11 @@ const SignupRoute = SignupRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ListingsRoute = ListingsRouteImport.update({
+  id: '/listings',
+  path: '/listings',
   getParentRoute: () => rootRouteImport,
 } as any)
 const InviteRoute = InviteRouteImport.update({
@@ -52,14 +83,27 @@ const TenantRoute = TenantRouteImport.update({
   id: '/_tenant',
   getParentRoute: () => rootRouteImport,
 } as any)
+const StudentRoute = StudentRouteImport.update({
+  id: '/_student',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LandlordRoute = LandlordRouteImport.update({
   id: '/_landlord',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminRoute = AdminRouteImport.update({
+  id: '/_admin',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const ListingsIdRoute = ListingsIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => ListingsRoute,
 } as any)
 const TenantTenantUploadRoute = TenantTenantUploadRouteImport.update({
   id: '/tenant/upload',
@@ -87,6 +131,27 @@ const TenantTenantDashboardRoute = TenantTenantDashboardRouteImport.update({
   path: '/tenant/dashboard',
   getParentRoute: () => TenantRoute,
 } as any)
+const StudentStudentPaymentsRoute = StudentStudentPaymentsRouteImport.update({
+  id: '/student/payments',
+  path: '/student/payments',
+  getParentRoute: () => StudentRoute,
+} as any)
+const StudentStudentInboxRoute = StudentStudentInboxRouteImport.update({
+  id: '/student/inbox',
+  path: '/student/inbox',
+  getParentRoute: () => StudentRoute,
+} as any)
+const StudentStudentDashboardRoute = StudentStudentDashboardRouteImport.update({
+  id: '/student/dashboard',
+  path: '/student/dashboard',
+  getParentRoute: () => StudentRoute,
+} as any)
+const StudentStudentAppointmentsRoute =
+  StudentStudentAppointmentsRouteImport.update({
+    id: '/student/appointments',
+    path: '/student/appointments',
+    getParentRoute: () => StudentRoute,
+  } as any)
 const LandlordLandlordTenantsRoute = LandlordLandlordTenantsRouteImport.update({
   id: '/landlord/tenants',
   path: '/landlord/tenants',
@@ -110,75 +175,200 @@ const LandlordLandlordNotificationsRoute =
     path: '/landlord/notifications',
     getParentRoute: () => LandlordRoute,
   } as any)
+const LandlordLandlordListingsRoute =
+  LandlordLandlordListingsRouteImport.update({
+    id: '/landlord/listings',
+    path: '/landlord/listings',
+    getParentRoute: () => LandlordRoute,
+  } as any)
+const LandlordLandlordInboxRoute = LandlordLandlordInboxRouteImport.update({
+  id: '/landlord/inbox',
+  path: '/landlord/inbox',
+  getParentRoute: () => LandlordRoute,
+} as any)
 const LandlordLandlordDashboardRoute =
   LandlordLandlordDashboardRouteImport.update({
     id: '/landlord/dashboard',
     path: '/landlord/dashboard',
     getParentRoute: () => LandlordRoute,
   } as any)
+const LandlordLandlordAppointmentsRoute =
+  LandlordLandlordAppointmentsRouteImport.update({
+    id: '/landlord/appointments',
+    path: '/landlord/appointments',
+    getParentRoute: () => LandlordRoute,
+  } as any)
+const AdminAdminUsersRoute = AdminAdminUsersRouteImport.update({
+  id: '/admin/users',
+  path: '/admin/users',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminAdminPaymentsRoute = AdminAdminPaymentsRouteImport.update({
+  id: '/admin/payments',
+  path: '/admin/payments',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminAdminMessagesRoute = AdminAdminMessagesRouteImport.update({
+  id: '/admin/messages',
+  path: '/admin/messages',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminAdminListingsRoute = AdminAdminListingsRouteImport.update({
+  id: '/admin/listings',
+  path: '/admin/listings',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminAdminDashboardRoute = AdminAdminDashboardRouteImport.update({
+  id: '/admin/dashboard',
+  path: '/admin/dashboard',
+  getParentRoute: () => AdminRoute,
+} as any)
 const LandlordLandlordPaymentsReviewRoute =
   LandlordLandlordPaymentsReviewRouteImport.update({
     id: '/landlord/payments/review',
     path: '/landlord/payments/review',
     getParentRoute: () => LandlordRoute,
   } as any)
+const LandlordLandlordListingsCreateRoute =
+  LandlordLandlordListingsCreateRouteImport.update({
+    id: '/create',
+    path: '/create',
+    getParentRoute: () => LandlordLandlordListingsRoute,
+  } as any)
+const AdminAdminVerificationsStudentsRoute =
+  AdminAdminVerificationsStudentsRouteImport.update({
+    id: '/admin/verifications/students',
+    path: '/admin/verifications/students',
+    getParentRoute: () => AdminRoute,
+  } as any)
+const AdminAdminVerificationsLandlordsRoute =
+  AdminAdminVerificationsLandlordsRouteImport.update({
+    id: '/admin/verifications/landlords',
+    path: '/admin/verifications/landlords',
+    getParentRoute: () => AdminRoute,
+  } as any)
+const LandlordLandlordListingsIdEditRoute =
+  LandlordLandlordListingsIdEditRouteImport.update({
+    id: '/$id/edit',
+    path: '/$id/edit',
+    getParentRoute: () => LandlordLandlordListingsRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/invite': typeof InviteRoute
+  '/listings': typeof ListingsRouteWithChildren
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
+  '/verify-pending': typeof VerifyPendingRoute
+  '/listings/$id': typeof ListingsIdRoute
+  '/admin/dashboard': typeof AdminAdminDashboardRoute
+  '/admin/listings': typeof AdminAdminListingsRoute
+  '/admin/messages': typeof AdminAdminMessagesRoute
+  '/admin/payments': typeof AdminAdminPaymentsRoute
+  '/admin/users': typeof AdminAdminUsersRoute
+  '/landlord/appointments': typeof LandlordLandlordAppointmentsRoute
   '/landlord/dashboard': typeof LandlordLandlordDashboardRoute
+  '/landlord/inbox': typeof LandlordLandlordInboxRoute
+  '/landlord/listings': typeof LandlordLandlordListingsRouteWithChildren
   '/landlord/notifications': typeof LandlordLandlordNotificationsRoute
   '/landlord/properties': typeof LandlordLandlordPropertiesRoute
   '/landlord/receipts': typeof LandlordLandlordReceiptsRoute
   '/landlord/tenants': typeof LandlordLandlordTenantsRoute
+  '/student/appointments': typeof StudentStudentAppointmentsRoute
+  '/student/dashboard': typeof StudentStudentDashboardRoute
+  '/student/inbox': typeof StudentStudentInboxRoute
+  '/student/payments': typeof StudentStudentPaymentsRoute
   '/tenant/dashboard': typeof TenantTenantDashboardRoute
   '/tenant/notifications': typeof TenantTenantNotificationsRoute
   '/tenant/payments': typeof TenantTenantPaymentsRoute
   '/tenant/receipts': typeof TenantTenantReceiptsRoute
   '/tenant/upload': typeof TenantTenantUploadRoute
+  '/admin/verifications/landlords': typeof AdminAdminVerificationsLandlordsRoute
+  '/admin/verifications/students': typeof AdminAdminVerificationsStudentsRoute
+  '/landlord/listings/create': typeof LandlordLandlordListingsCreateRoute
   '/landlord/payments/review': typeof LandlordLandlordPaymentsReviewRoute
+  '/landlord/listings/$id/edit': typeof LandlordLandlordListingsIdEditRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/invite': typeof InviteRoute
+  '/listings': typeof ListingsRouteWithChildren
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
+  '/verify-pending': typeof VerifyPendingRoute
+  '/listings/$id': typeof ListingsIdRoute
+  '/admin/dashboard': typeof AdminAdminDashboardRoute
+  '/admin/listings': typeof AdminAdminListingsRoute
+  '/admin/messages': typeof AdminAdminMessagesRoute
+  '/admin/payments': typeof AdminAdminPaymentsRoute
+  '/admin/users': typeof AdminAdminUsersRoute
+  '/landlord/appointments': typeof LandlordLandlordAppointmentsRoute
   '/landlord/dashboard': typeof LandlordLandlordDashboardRoute
+  '/landlord/inbox': typeof LandlordLandlordInboxRoute
+  '/landlord/listings': typeof LandlordLandlordListingsRouteWithChildren
   '/landlord/notifications': typeof LandlordLandlordNotificationsRoute
   '/landlord/properties': typeof LandlordLandlordPropertiesRoute
   '/landlord/receipts': typeof LandlordLandlordReceiptsRoute
   '/landlord/tenants': typeof LandlordLandlordTenantsRoute
+  '/student/appointments': typeof StudentStudentAppointmentsRoute
+  '/student/dashboard': typeof StudentStudentDashboardRoute
+  '/student/inbox': typeof StudentStudentInboxRoute
+  '/student/payments': typeof StudentStudentPaymentsRoute
   '/tenant/dashboard': typeof TenantTenantDashboardRoute
   '/tenant/notifications': typeof TenantTenantNotificationsRoute
   '/tenant/payments': typeof TenantTenantPaymentsRoute
   '/tenant/receipts': typeof TenantTenantReceiptsRoute
   '/tenant/upload': typeof TenantTenantUploadRoute
+  '/admin/verifications/landlords': typeof AdminAdminVerificationsLandlordsRoute
+  '/admin/verifications/students': typeof AdminAdminVerificationsStudentsRoute
+  '/landlord/listings/create': typeof LandlordLandlordListingsCreateRoute
   '/landlord/payments/review': typeof LandlordLandlordPaymentsReviewRoute
+  '/landlord/listings/$id/edit': typeof LandlordLandlordListingsIdEditRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/_admin': typeof AdminRouteWithChildren
   '/_landlord': typeof LandlordRouteWithChildren
+  '/_student': typeof StudentRouteWithChildren
   '/_tenant': typeof TenantRouteWithChildren
   '/forgot-password': typeof ForgotPasswordRoute
   '/invite': typeof InviteRoute
+  '/listings': typeof ListingsRouteWithChildren
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
+  '/verify-pending': typeof VerifyPendingRoute
+  '/listings/$id': typeof ListingsIdRoute
+  '/_admin/admin/dashboard': typeof AdminAdminDashboardRoute
+  '/_admin/admin/listings': typeof AdminAdminListingsRoute
+  '/_admin/admin/messages': typeof AdminAdminMessagesRoute
+  '/_admin/admin/payments': typeof AdminAdminPaymentsRoute
+  '/_admin/admin/users': typeof AdminAdminUsersRoute
+  '/_landlord/landlord/appointments': typeof LandlordLandlordAppointmentsRoute
   '/_landlord/landlord/dashboard': typeof LandlordLandlordDashboardRoute
+  '/_landlord/landlord/inbox': typeof LandlordLandlordInboxRoute
+  '/_landlord/landlord/listings': typeof LandlordLandlordListingsRouteWithChildren
   '/_landlord/landlord/notifications': typeof LandlordLandlordNotificationsRoute
   '/_landlord/landlord/properties': typeof LandlordLandlordPropertiesRoute
   '/_landlord/landlord/receipts': typeof LandlordLandlordReceiptsRoute
   '/_landlord/landlord/tenants': typeof LandlordLandlordTenantsRoute
+  '/_student/student/appointments': typeof StudentStudentAppointmentsRoute
+  '/_student/student/dashboard': typeof StudentStudentDashboardRoute
+  '/_student/student/inbox': typeof StudentStudentInboxRoute
+  '/_student/student/payments': typeof StudentStudentPaymentsRoute
   '/_tenant/tenant/dashboard': typeof TenantTenantDashboardRoute
   '/_tenant/tenant/notifications': typeof TenantTenantNotificationsRoute
   '/_tenant/tenant/payments': typeof TenantTenantPaymentsRoute
   '/_tenant/tenant/receipts': typeof TenantTenantReceiptsRoute
   '/_tenant/tenant/upload': typeof TenantTenantUploadRoute
+  '/_admin/admin/verifications/landlords': typeof AdminAdminVerificationsLandlordsRoute
+  '/_admin/admin/verifications/students': typeof AdminAdminVerificationsStudentsRoute
+  '/_landlord/landlord/listings/create': typeof LandlordLandlordListingsCreateRoute
   '/_landlord/landlord/payments/review': typeof LandlordLandlordPaymentsReviewRoute
+  '/_landlord/landlord/listings/$id/edit': typeof LandlordLandlordListingsIdEditRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -186,71 +376,141 @@ export interface FileRouteTypes {
     | '/'
     | '/forgot-password'
     | '/invite'
+    | '/listings'
     | '/login'
     | '/signup'
+    | '/verify-pending'
+    | '/listings/$id'
+    | '/admin/dashboard'
+    | '/admin/listings'
+    | '/admin/messages'
+    | '/admin/payments'
+    | '/admin/users'
+    | '/landlord/appointments'
     | '/landlord/dashboard'
+    | '/landlord/inbox'
+    | '/landlord/listings'
     | '/landlord/notifications'
     | '/landlord/properties'
     | '/landlord/receipts'
     | '/landlord/tenants'
+    | '/student/appointments'
+    | '/student/dashboard'
+    | '/student/inbox'
+    | '/student/payments'
     | '/tenant/dashboard'
     | '/tenant/notifications'
     | '/tenant/payments'
     | '/tenant/receipts'
     | '/tenant/upload'
+    | '/admin/verifications/landlords'
+    | '/admin/verifications/students'
+    | '/landlord/listings/create'
     | '/landlord/payments/review'
+    | '/landlord/listings/$id/edit'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/forgot-password'
     | '/invite'
+    | '/listings'
     | '/login'
     | '/signup'
+    | '/verify-pending'
+    | '/listings/$id'
+    | '/admin/dashboard'
+    | '/admin/listings'
+    | '/admin/messages'
+    | '/admin/payments'
+    | '/admin/users'
+    | '/landlord/appointments'
     | '/landlord/dashboard'
+    | '/landlord/inbox'
+    | '/landlord/listings'
     | '/landlord/notifications'
     | '/landlord/properties'
     | '/landlord/receipts'
     | '/landlord/tenants'
+    | '/student/appointments'
+    | '/student/dashboard'
+    | '/student/inbox'
+    | '/student/payments'
     | '/tenant/dashboard'
     | '/tenant/notifications'
     | '/tenant/payments'
     | '/tenant/receipts'
     | '/tenant/upload'
+    | '/admin/verifications/landlords'
+    | '/admin/verifications/students'
+    | '/landlord/listings/create'
     | '/landlord/payments/review'
+    | '/landlord/listings/$id/edit'
   id:
     | '__root__'
     | '/'
+    | '/_admin'
     | '/_landlord'
+    | '/_student'
     | '/_tenant'
     | '/forgot-password'
     | '/invite'
+    | '/listings'
     | '/login'
     | '/signup'
+    | '/verify-pending'
+    | '/listings/$id'
+    | '/_admin/admin/dashboard'
+    | '/_admin/admin/listings'
+    | '/_admin/admin/messages'
+    | '/_admin/admin/payments'
+    | '/_admin/admin/users'
+    | '/_landlord/landlord/appointments'
     | '/_landlord/landlord/dashboard'
+    | '/_landlord/landlord/inbox'
+    | '/_landlord/landlord/listings'
     | '/_landlord/landlord/notifications'
     | '/_landlord/landlord/properties'
     | '/_landlord/landlord/receipts'
     | '/_landlord/landlord/tenants'
+    | '/_student/student/appointments'
+    | '/_student/student/dashboard'
+    | '/_student/student/inbox'
+    | '/_student/student/payments'
     | '/_tenant/tenant/dashboard'
     | '/_tenant/tenant/notifications'
     | '/_tenant/tenant/payments'
     | '/_tenant/tenant/receipts'
     | '/_tenant/tenant/upload'
+    | '/_admin/admin/verifications/landlords'
+    | '/_admin/admin/verifications/students'
+    | '/_landlord/landlord/listings/create'
     | '/_landlord/landlord/payments/review'
+    | '/_landlord/landlord/listings/$id/edit'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AdminRoute: typeof AdminRouteWithChildren
   LandlordRoute: typeof LandlordRouteWithChildren
+  StudentRoute: typeof StudentRouteWithChildren
   TenantRoute: typeof TenantRouteWithChildren
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   InviteRoute: typeof InviteRoute
+  ListingsRoute: typeof ListingsRouteWithChildren
   LoginRoute: typeof LoginRoute
   SignupRoute: typeof SignupRoute
+  VerifyPendingRoute: typeof VerifyPendingRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/verify-pending': {
+      id: '/verify-pending'
+      path: '/verify-pending'
+      fullPath: '/verify-pending'
+      preLoaderRoute: typeof VerifyPendingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/signup': {
       id: '/signup'
       path: '/signup'
@@ -263,6 +523,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/listings': {
+      id: '/listings'
+      path: '/listings'
+      fullPath: '/listings'
+      preLoaderRoute: typeof ListingsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/invite': {
@@ -286,11 +553,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TenantRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_student': {
+      id: '/_student'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof StudentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_landlord': {
       id: '/_landlord'
       path: ''
       fullPath: '/'
       preLoaderRoute: typeof LandlordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_admin': {
+      id: '/_admin'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AdminRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -299,6 +580,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/listings/$id': {
+      id: '/listings/$id'
+      path: '/$id'
+      fullPath: '/listings/$id'
+      preLoaderRoute: typeof ListingsIdRouteImport
+      parentRoute: typeof ListingsRoute
     }
     '/_tenant/tenant/upload': {
       id: '/_tenant/tenant/upload'
@@ -335,6 +623,34 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TenantTenantDashboardRouteImport
       parentRoute: typeof TenantRoute
     }
+    '/_student/student/payments': {
+      id: '/_student/student/payments'
+      path: '/student/payments'
+      fullPath: '/student/payments'
+      preLoaderRoute: typeof StudentStudentPaymentsRouteImport
+      parentRoute: typeof StudentRoute
+    }
+    '/_student/student/inbox': {
+      id: '/_student/student/inbox'
+      path: '/student/inbox'
+      fullPath: '/student/inbox'
+      preLoaderRoute: typeof StudentStudentInboxRouteImport
+      parentRoute: typeof StudentRoute
+    }
+    '/_student/student/dashboard': {
+      id: '/_student/student/dashboard'
+      path: '/student/dashboard'
+      fullPath: '/student/dashboard'
+      preLoaderRoute: typeof StudentStudentDashboardRouteImport
+      parentRoute: typeof StudentRoute
+    }
+    '/_student/student/appointments': {
+      id: '/_student/student/appointments'
+      path: '/student/appointments'
+      fullPath: '/student/appointments'
+      preLoaderRoute: typeof StudentStudentAppointmentsRouteImport
+      parentRoute: typeof StudentRoute
+    }
     '/_landlord/landlord/tenants': {
       id: '/_landlord/landlord/tenants'
       path: '/landlord/tenants'
@@ -363,12 +679,68 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LandlordLandlordNotificationsRouteImport
       parentRoute: typeof LandlordRoute
     }
+    '/_landlord/landlord/listings': {
+      id: '/_landlord/landlord/listings'
+      path: '/landlord/listings'
+      fullPath: '/landlord/listings'
+      preLoaderRoute: typeof LandlordLandlordListingsRouteImport
+      parentRoute: typeof LandlordRoute
+    }
+    '/_landlord/landlord/inbox': {
+      id: '/_landlord/landlord/inbox'
+      path: '/landlord/inbox'
+      fullPath: '/landlord/inbox'
+      preLoaderRoute: typeof LandlordLandlordInboxRouteImport
+      parentRoute: typeof LandlordRoute
+    }
     '/_landlord/landlord/dashboard': {
       id: '/_landlord/landlord/dashboard'
       path: '/landlord/dashboard'
       fullPath: '/landlord/dashboard'
       preLoaderRoute: typeof LandlordLandlordDashboardRouteImport
       parentRoute: typeof LandlordRoute
+    }
+    '/_landlord/landlord/appointments': {
+      id: '/_landlord/landlord/appointments'
+      path: '/landlord/appointments'
+      fullPath: '/landlord/appointments'
+      preLoaderRoute: typeof LandlordLandlordAppointmentsRouteImport
+      parentRoute: typeof LandlordRoute
+    }
+    '/_admin/admin/users': {
+      id: '/_admin/admin/users'
+      path: '/admin/users'
+      fullPath: '/admin/users'
+      preLoaderRoute: typeof AdminAdminUsersRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/admin/payments': {
+      id: '/_admin/admin/payments'
+      path: '/admin/payments'
+      fullPath: '/admin/payments'
+      preLoaderRoute: typeof AdminAdminPaymentsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/admin/messages': {
+      id: '/_admin/admin/messages'
+      path: '/admin/messages'
+      fullPath: '/admin/messages'
+      preLoaderRoute: typeof AdminAdminMessagesRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/admin/listings': {
+      id: '/_admin/admin/listings'
+      path: '/admin/listings'
+      fullPath: '/admin/listings'
+      preLoaderRoute: typeof AdminAdminListingsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/admin/dashboard': {
+      id: '/_admin/admin/dashboard'
+      path: '/admin/dashboard'
+      fullPath: '/admin/dashboard'
+      preLoaderRoute: typeof AdminAdminDashboardRouteImport
+      parentRoute: typeof AdminRoute
     }
     '/_landlord/landlord/payments/review': {
       id: '/_landlord/landlord/payments/review'
@@ -377,11 +749,80 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LandlordLandlordPaymentsReviewRouteImport
       parentRoute: typeof LandlordRoute
     }
+    '/_landlord/landlord/listings/create': {
+      id: '/_landlord/landlord/listings/create'
+      path: '/create'
+      fullPath: '/landlord/listings/create'
+      preLoaderRoute: typeof LandlordLandlordListingsCreateRouteImport
+      parentRoute: typeof LandlordLandlordListingsRoute
+    }
+    '/_admin/admin/verifications/students': {
+      id: '/_admin/admin/verifications/students'
+      path: '/admin/verifications/students'
+      fullPath: '/admin/verifications/students'
+      preLoaderRoute: typeof AdminAdminVerificationsStudentsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/admin/verifications/landlords': {
+      id: '/_admin/admin/verifications/landlords'
+      path: '/admin/verifications/landlords'
+      fullPath: '/admin/verifications/landlords'
+      preLoaderRoute: typeof AdminAdminVerificationsLandlordsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_landlord/landlord/listings/$id/edit': {
+      id: '/_landlord/landlord/listings/$id/edit'
+      path: '/$id/edit'
+      fullPath: '/landlord/listings/$id/edit'
+      preLoaderRoute: typeof LandlordLandlordListingsIdEditRouteImport
+      parentRoute: typeof LandlordLandlordListingsRoute
+    }
   }
 }
 
+interface AdminRouteChildren {
+  AdminAdminDashboardRoute: typeof AdminAdminDashboardRoute
+  AdminAdminListingsRoute: typeof AdminAdminListingsRoute
+  AdminAdminMessagesRoute: typeof AdminAdminMessagesRoute
+  AdminAdminPaymentsRoute: typeof AdminAdminPaymentsRoute
+  AdminAdminUsersRoute: typeof AdminAdminUsersRoute
+  AdminAdminVerificationsLandlordsRoute: typeof AdminAdminVerificationsLandlordsRoute
+  AdminAdminVerificationsStudentsRoute: typeof AdminAdminVerificationsStudentsRoute
+}
+
+const AdminRouteChildren: AdminRouteChildren = {
+  AdminAdminDashboardRoute: AdminAdminDashboardRoute,
+  AdminAdminListingsRoute: AdminAdminListingsRoute,
+  AdminAdminMessagesRoute: AdminAdminMessagesRoute,
+  AdminAdminPaymentsRoute: AdminAdminPaymentsRoute,
+  AdminAdminUsersRoute: AdminAdminUsersRoute,
+  AdminAdminVerificationsLandlordsRoute: AdminAdminVerificationsLandlordsRoute,
+  AdminAdminVerificationsStudentsRoute: AdminAdminVerificationsStudentsRoute,
+}
+
+const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
+
+interface LandlordLandlordListingsRouteChildren {
+  LandlordLandlordListingsCreateRoute: typeof LandlordLandlordListingsCreateRoute
+  LandlordLandlordListingsIdEditRoute: typeof LandlordLandlordListingsIdEditRoute
+}
+
+const LandlordLandlordListingsRouteChildren: LandlordLandlordListingsRouteChildren =
+  {
+    LandlordLandlordListingsCreateRoute: LandlordLandlordListingsCreateRoute,
+    LandlordLandlordListingsIdEditRoute: LandlordLandlordListingsIdEditRoute,
+  }
+
+const LandlordLandlordListingsRouteWithChildren =
+  LandlordLandlordListingsRoute._addFileChildren(
+    LandlordLandlordListingsRouteChildren,
+  )
+
 interface LandlordRouteChildren {
+  LandlordLandlordAppointmentsRoute: typeof LandlordLandlordAppointmentsRoute
   LandlordLandlordDashboardRoute: typeof LandlordLandlordDashboardRoute
+  LandlordLandlordInboxRoute: typeof LandlordLandlordInboxRoute
+  LandlordLandlordListingsRoute: typeof LandlordLandlordListingsRouteWithChildren
   LandlordLandlordNotificationsRoute: typeof LandlordLandlordNotificationsRoute
   LandlordLandlordPropertiesRoute: typeof LandlordLandlordPropertiesRoute
   LandlordLandlordReceiptsRoute: typeof LandlordLandlordReceiptsRoute
@@ -390,7 +831,10 @@ interface LandlordRouteChildren {
 }
 
 const LandlordRouteChildren: LandlordRouteChildren = {
+  LandlordLandlordAppointmentsRoute: LandlordLandlordAppointmentsRoute,
   LandlordLandlordDashboardRoute: LandlordLandlordDashboardRoute,
+  LandlordLandlordInboxRoute: LandlordLandlordInboxRoute,
+  LandlordLandlordListingsRoute: LandlordLandlordListingsRouteWithChildren,
   LandlordLandlordNotificationsRoute: LandlordLandlordNotificationsRoute,
   LandlordLandlordPropertiesRoute: LandlordLandlordPropertiesRoute,
   LandlordLandlordReceiptsRoute: LandlordLandlordReceiptsRoute,
@@ -401,6 +845,23 @@ const LandlordRouteChildren: LandlordRouteChildren = {
 const LandlordRouteWithChildren = LandlordRoute._addFileChildren(
   LandlordRouteChildren,
 )
+
+interface StudentRouteChildren {
+  StudentStudentAppointmentsRoute: typeof StudentStudentAppointmentsRoute
+  StudentStudentDashboardRoute: typeof StudentStudentDashboardRoute
+  StudentStudentInboxRoute: typeof StudentStudentInboxRoute
+  StudentStudentPaymentsRoute: typeof StudentStudentPaymentsRoute
+}
+
+const StudentRouteChildren: StudentRouteChildren = {
+  StudentStudentAppointmentsRoute: StudentStudentAppointmentsRoute,
+  StudentStudentDashboardRoute: StudentStudentDashboardRoute,
+  StudentStudentInboxRoute: StudentStudentInboxRoute,
+  StudentStudentPaymentsRoute: StudentStudentPaymentsRoute,
+}
+
+const StudentRouteWithChildren =
+  StudentRoute._addFileChildren(StudentRouteChildren)
 
 interface TenantRouteChildren {
   TenantTenantDashboardRoute: typeof TenantTenantDashboardRoute
@@ -421,14 +882,30 @@ const TenantRouteChildren: TenantRouteChildren = {
 const TenantRouteWithChildren =
   TenantRoute._addFileChildren(TenantRouteChildren)
 
+interface ListingsRouteChildren {
+  ListingsIdRoute: typeof ListingsIdRoute
+}
+
+const ListingsRouteChildren: ListingsRouteChildren = {
+  ListingsIdRoute: ListingsIdRoute,
+}
+
+const ListingsRouteWithChildren = ListingsRoute._addFileChildren(
+  ListingsRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AdminRoute: AdminRouteWithChildren,
   LandlordRoute: LandlordRouteWithChildren,
+  StudentRoute: StudentRouteWithChildren,
   TenantRoute: TenantRouteWithChildren,
   ForgotPasswordRoute: ForgotPasswordRoute,
   InviteRoute: InviteRoute,
+  ListingsRoute: ListingsRouteWithChildren,
   LoginRoute: LoginRoute,
   SignupRoute: SignupRoute,
+  VerifyPendingRoute: VerifyPendingRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -21,7 +21,8 @@ function mapUser(raw: Record<string, unknown>): User {
     id:        raw.id as string,
     name:      (raw.fullName ?? raw.name ?? "") as string,
     email:     raw.email as string,
-    role:      raw.role as "landlord" | "tenant",
+    role:      raw.role as User["role"],
+    status:    (raw.status ?? "ACTIVE") as User["status"],
     phone:     raw.phone as string | undefined,
     avatarUrl: raw.avatarUrl as string | undefined,
   };

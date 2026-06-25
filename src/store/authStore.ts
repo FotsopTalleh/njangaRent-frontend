@@ -1,15 +1,21 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
-export type UserRole = "landlord" | "tenant";
+export type UserRole = "landlord" | "student" | "tenant" | "admin";
+export type UserStatus = "PENDING" | "ACTIVE" | "REJECTED" | "BANNED";
 
 export interface User {
   id: string;
-  name: string;      // mapped from backend's fullName
+  name: string;       // mapped from backend's fullName
   email: string;
   role: UserRole;
+  status: UserStatus;
   phone?: string;
   avatarUrl?: string;
+  // student-only
+  university?: string;
+  program?: string;
+  matricNumber?: string;
 }
 
 interface AuthState {
@@ -35,6 +41,6 @@ export const useAuthStore = create<AuthState>()(
       setAccessToken: (accessToken) => set({ accessToken }),
       logout: () => set({ user: null, accessToken: null }),
     }),
-    { name: "mytenant-auth" },
+    { name: "njangrent-auth" },
   ),
 );

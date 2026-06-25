@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Receipt, Download, ExternalLink, Loader2, Search } from "lucide-react";
+import { Receipt, Download, Loader2, Search } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -14,8 +14,8 @@ export const Route = createFileRoute("/_tenant/tenant/receipts")({
   component: ReceiptsPage,
 });
 
-// Track which receipt is being acted on, and what action is running.
-type ActiveAction = { id: string; action: "view" | "download" } | null;
+// Track which receipt is being downloaded.
+type ActiveAction = { id: string } | null;
 
 function ReceiptsPage() {
   const [search, setSearch] = useState("");
@@ -32,24 +32,9 @@ function ReceiptsPage() {
     r.receiptNumber.toLowerCase().includes(search.toLowerCase())
   );
 
-  // ── View (open in new tab) ─────────────────────────────────────────────────
-  // IMPORTANT: window.open() must be called synchronously inside the click
-  // handler. receiptsApi.openReceipt() handles this by opening about:blank
-  // immediately before any await, then navigating it once the URL is ready.
-  const handleView = async (r: ReceiptType) => {
-    setActive({ id: r.id, action: "view" });
-    try {
-      await receiptsApi.openReceipt(r.id);
-    } catch {
-      toast.error("Could not open receipt. Please try again.");
-    } finally {
-      setActive(null);
-    }
-  };
-
-  // ── Download (save to disk) ────────────────────────────────────────────────
+  // ── One-click download ─────────────────────────────────────────────────────
   const handleDownload = async (r: ReceiptType) => {
-    setActive({ id: r.id, action: "download" });
+    setActive({ id: r.id });
     try {
       await receiptsApi.downloadReceipt(r.id);
     } catch {
@@ -104,15 +89,11 @@ function ReceiptsPage() {
             <span>Receipt #</span>
             <span className="text-right">Amount</span>
             <span className="text-right hidden sm:block">Date</span>
-            <span />
+            <span className="text-right">PDF</span>
           </div>
 
           <ul className="divide-y divide-border">
             {filtered.map((r) => {
-              const isViewing   = active?.id === r.id && active.action === "view";
-              const isDownloading = active?.id === r.id && active.action === "download";
-              const isBusy = active?.id === r.id;
-
               return (
                 <li
                   key={r.id}
@@ -138,32 +119,17 @@ function ReceiptsPage() {
                     {formatDate(r.createdAt)}
                   </div>
 
-                  <div className="flex items-center gap-1">
-                    {/* View in new tab */}
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 rounded-lg"
-                      onClick={() => handleView(r)}
-                      disabled={isBusy}
-                      title="View receipt in new tab"
-                    >
-                      {isViewing
-                        ? <Loader2 className="h-4 w-4 animate-spin" />
-                        : <ExternalLink className="h-4 w-4" />
-                      }
-                    </Button>
-
-                    {/* Download to disk */}
+                  <div className="flex items-center">
+                    {/* One-click download */}
                     <Button
                       variant="ghost"
                       size="icon"
                       className="h-8 w-8 rounded-lg"
                       onClick={() => handleDownload(r)}
-                      disabled={isBusy}
+                      disabled={active?.id === r.id}
                       title="Download receipt PDF"
                     >
-                      {isDownloading
+                      {active?.id === r.id
                         ? <Loader2 className="h-4 w-4 animate-spin" />
                         : <Download className="h-4 w-4" />
                       }

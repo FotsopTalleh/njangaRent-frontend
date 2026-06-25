@@ -5,7 +5,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import {
   UserPlus, Users, Loader2, Trash2, MoreHorizontal, AlertCircle,
-  Copy, Check, ChevronRight, Home, AlertTriangle,
+  Copy, Check, ChevronRight, Home, AlertTriangle, CalendarDays,
+  Mail, Building2, Banknote, X,
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -31,6 +32,7 @@ import { tenantsApi, propertiesApi } from "@/api";
 import type { Tenant, Property } from "@/api";
 import { formatCurrency } from "@/utils/format";
 import { cn } from "@/lib/utils";
+import { PaymentCalendar } from "@/components/payments/PaymentCalendar";
 
 export const Route = createFileRoute("/_landlord/landlord/tenants")({
   head: () => ({ meta: [{ title: "Tenants — MyTenant" }] }),
@@ -58,6 +60,9 @@ function TenantsPage() {
   const [removeId,   setRemoveId]   = useState<string | null>(null);
   const [inviteLink, setInviteLink] = useState<string | null>(null);
   const [copied,     setCopied]     = useState(false);
+
+  // ── Tenant detail / calendar panel ────────────────────────────────────────
+  const [viewTenant, setViewTenant] = useState<Tenant | null>(null);
 
   const tenantsQ = useQuery({
     queryKey: ["tenants"],
@@ -112,6 +117,8 @@ function TenantsPage() {
       qc.invalidateQueries({ queryKey: ["tenants"] });
       toast.success("Tenant removed");
       setRemoveId(null);
+      // Close detail panel if we just removed the viewed tenant
+      if (viewTenant && viewTenant.id === removeId) setViewTenant(null);
     },
     onError: (e: { message?: string }) =>
       toast.error(e?.message ?? "Failed to remove tenant"),
@@ -167,6 +174,9 @@ function TenantsPage() {
           <div className="px-5 py-4 border-b border-border">
             <p className="text-sm font-medium">
               {tenants.length} tenant{tenants.length !== 1 ? "s" : ""}
+              <span className="ml-2 text-xs text-muted-foreground font-normal">
+                — click a row to view their payment calendar
+              </span>
             </p>
           </div>
           <ul className="divide-y divide-border">
@@ -177,6 +187,7 @@ function TenantsPage() {
                   key={t.id}
                   tenant={t}
                   propertyName={prop?.name}
+                  onView={() => setViewTenant(t)}
                   onRemove={() => setRemoveId(t.id)}
                 />
               );
@@ -184,6 +195,87 @@ function TenantsPage() {
           </ul>
         </div>
       )}
+
+      {/* ── Tenant detail + calendar dialog ─────────────────────────────────── */}
+      <Dialog open={!!viewTenant} onOpenChange={(v) => !v && setViewTenant(null)}>
+        <DialogContent className="sm:max-w-2xl rounded-2xl max-h-[90vh] overflow-y-auto">
+          {viewTenant && (() => {
+            const prop = properties.find((p) => p.id === viewTenant.propertyId);
+            const displayName = viewTenant.fullName || viewTenant.email || `${viewTenant.userId.slice(0, 8)}…`;
+            const initials = viewTenant.fullName
+              ? viewTenant.fullName.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()
+              : "T";
+
+            return (
+              <>
+                <DialogHeader>
+                  <div className="flex items-center gap-4">
+                    <div className="h-12 w-12 rounded-full bg-primary/10 text-primary flex items-center justify-center text-lg font-bold shrink-0">
+                      {initials}
+                    </div>
+                    <div className="min-w-0">
+                      <DialogTitle className="text-lg truncate">{displayName}</DialogTitle>
+                      <Badge
+                        variant={viewTenant.status === "active" ? "default" : "secondary"}
+                        className={cn(
+                          "rounded-full text-xs mt-1",
+                          viewTenant.status === "active" && "bg-success/15 text-success border-transparent",
+                        )}
+                      >
+                        {viewTenant.status}
+                      </Badge>
+                    </div>
+                  </div>
+                </DialogHeader>
+
+                {/* Tenant info pills */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-2">
+                  {viewTenant.email && (
+                    <InfoPill icon={<Mail className="h-3.5 w-3.5" />} label="Email" value={viewTenant.email} />
+                  )}
+                  {prop && (
+                    <InfoPill icon={<Building2 className="h-3.5 w-3.5" />} label="Property" value={prop.name} />
+                  )}
+                  <InfoPill
+                    icon={<Banknote className="h-3.5 w-3.5" />}
+                    label="Monthly rent"
+                    value={formatCurrency(viewTenant.monthlyRent)}
+                  />
+                </div>
+
+                {/* 12-month payment calendar */}
+                <div className="mt-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <CalendarDays className="h-4 w-4 text-muted-foreground" />
+                    <p className="text-sm font-semibold">Rent Payment Calendar</p>
+                  </div>
+                  <PaymentCalendar tenantId={viewTenant.id} />
+                </div>
+
+                {/* Footer actions */}
+                <div className="flex items-center justify-between pt-2 mt-2 border-t border-border">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="rounded-xl gap-2 text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/20"
+                    onClick={() => { setRemoveId(viewTenant.id); }}
+                  >
+                    <Trash2 className="h-4 w-4" /> Remove tenant
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="rounded-xl gap-2"
+                    onClick={() => setViewTenant(null)}
+                  >
+                    <X className="h-4 w-4" /> Close
+                  </Button>
+                </div>
+              </>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
 
       {/* ── Invite dialog ──────────────────────────────────────────────────── */}
       <Dialog open={inviteOpen} onOpenChange={(v) => !v && closeInvite()}>
@@ -345,10 +437,11 @@ function TenantsPage() {
 // ── Sub-components ────────────────────────────────────────────────────────────
 
 function TenantRow({
-  tenant: t, propertyName, onRemove,
+  tenant: t, propertyName, onView, onRemove,
 }: {
   tenant: Tenant;
   propertyName?: string;
+  onView: () => void;
   onRemove: () => void;
 }) {
   // Use enriched fields from backend; fall back to truncated userId
@@ -358,7 +451,14 @@ function TenantRow({
     : "T";
 
   return (
-    <li className="flex items-center gap-3 px-5 py-3.5">
+    <li
+      className="flex items-center gap-3 px-5 py-3.5 cursor-pointer hover:bg-muted/40 transition-colors group"
+      onClick={onView}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => e.key === "Enter" && onView()}
+      aria-label={`View calendar for ${displayName}`}
+    >
       <div className="h-9 w-9 rounded-full bg-primary/10 text-primary flex items-center justify-center text-sm font-semibold shrink-0">
         {initials}
       </div>
@@ -386,8 +486,12 @@ function TenantRow({
       >
         {t.status}
       </Badge>
+
+      {/* Calendar hint icon — visible on hover */}
+      <CalendarDays className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+
       <DropdownMenu>
-        <DropdownMenuTrigger asChild>
+        <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
           <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg shrink-0">
             <MoreHorizontal className="h-4 w-4" />
           </Button>
@@ -395,13 +499,31 @@ function TenantRow({
         <DropdownMenuContent align="end" className="rounded-xl">
           <DropdownMenuItem
             className="text-destructive focus:text-destructive gap-2 cursor-pointer"
-            onClick={onRemove}
+            onClick={(e) => { e.stopPropagation(); onRemove(); }}
           >
             <Trash2 className="h-4 w-4" /> Remove tenant
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
     </li>
+  );
+}
+
+/** Small info pill used inside the tenant detail dialog. */
+function InfoPill({
+  icon, label, value,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="rounded-xl border border-border bg-muted/30 px-3 py-2.5 space-y-1">
+      <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+        {icon} {label}
+      </div>
+      <p className="text-sm font-medium truncate">{value}</p>
+    </div>
   );
 }
 
