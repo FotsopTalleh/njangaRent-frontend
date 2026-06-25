@@ -8,6 +8,8 @@ import {
   CheckCircle, AlertCircle, XCircle, BedDouble, Bath, MessageSquare,
 } from "lucide-react";
 import { useAuthStore } from "@/store/authStore";
+import { axiosClient } from "@/api/axiosClient";
+import { useThemeStore } from "@/store/themeStore";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/listing/$id")({
@@ -30,8 +32,21 @@ function ListingDetail() {
   const { id } = Route.useParams();
   const router = useRouter();
   const { token, user } = useAuthStore();
+  const { theme } = useThemeStore();
+  const isDark = theme === "dark";
 
-  const [descExpanded, setDescExpanded] = useState(false);
+  // Theme-aware color helper
+  const c = {
+    bg:        isDark ? "#0f1f18" : "#FFFFFF",
+    surface:   isDark ? "#162b20" : "#F9F7F2",
+    border:    isDark ? "rgba(255,255,255,0.08)" : "#E8E4DC",
+    text:      isDark ? "#e8f5ee" : "#1A1A18",
+    textMuted: isDark ? "#8ab39a" : "#6B6B68",
+    textFaint: isDark ? "#5a8a6a" : "#A8A8A5",
+    green:     "#1B4332",
+    greenLight: isDark ? "#2d6a4f" : "#EAF4EE",
+    amber:     "#D4A017",
+  };
   const [showSchedule, setShowSchedule] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
@@ -156,19 +171,27 @@ function ListingDetail() {
 
   if (isLoading) {
     return (
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", backgroundColor: "#F9F7F2" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", backgroundColor: c.bg }}>
         <div style={{ textAlign: "center" }}>
-          <div style={{ width: 40, height: 40, border: "3px solid #E8E4DC", borderTopColor: "#1B4332", borderRadius: "50%", animation: "spin 0.8s linear infinite", margin: "0 auto 12px" }} />
-          <p style={{ color: "#6B6B68", fontSize: 14 }}>Loading listing...</p>
+          <div style={{ width: 40, height: 40, border: "3px solid #E8E4DC", borderTopColor: c.green, borderRadius: "50%", animation: "spin 0.8s linear infinite", margin: "0 auto 12px" }} />
+          <p style={{ color: c.textMuted, fontSize: 14 }}>Loading listing...</p>
         </div>
       </div>
     );
   }
 
-  if (!listing) {
+  if (!listing || isError) {
     return (
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", backgroundColor: "#F9F7F2" }}>
-        <p style={{ color: "#6B6B68", fontSize: 15 }}>Listing not found.</p>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", backgroundColor: c.bg }}>
+        <div style={{ textAlign: "center", padding: "0 24px" }}>
+          <p style={{ color: c.textMuted, fontSize: 15, marginBottom: 12 }}>Listing not found or could not be loaded.</p>
+          <button
+            onClick={() => router.history.back()}
+            style={{ padding: "10px 20px", backgroundColor: c.green, color: "#fff", border: "none", borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: "pointer" }}
+          >
+            Go back
+          </button>
+        </div>
       </div>
     );
   }
@@ -188,7 +211,7 @@ function ListingDetail() {
   };
 
   return (
-    <div style={{ backgroundColor: "#FFFFFF", minHeight: "100vh", paddingBottom: "calc(72px + env(safe-area-inset-bottom))" }}>
+    <div style={{ backgroundColor: c.bg, minHeight: "100vh", paddingBottom: "calc(72px + env(safe-area-inset-bottom))" }}>
       
       {/* Photo Carousel */}
       <div style={{ position: "relative", width: "100%", aspectRatio: "16/9", backgroundColor: "#E8E4DC" }}>
@@ -240,23 +263,23 @@ function ListingDetail() {
       {/* Header Section */}
       <div style={{ padding: "16px 16px 12px" }}>
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
-          <h1 style={{ fontSize: 20, fontWeight: 700, color: "#1A1A18", margin: 0, lineHeight: 1.3, flex: 1 }}>
+          <h1 style={{ fontSize: 20, fontWeight: 700, color: c.text, margin: 0, lineHeight: 1.3, flex: 1 }}>
             {listing.title}
-            {listing.isVerified || listing.verified && <ShieldCheck size={16} color="#D4A017" style={{ display: "inline", marginLeft: 6 }} />}
+            {listing.isVerified || listing.verified && <ShieldCheck size={16} color={c.amber} style={{ display: "inline", marginLeft: 6 }} />}
           </h1>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 6 }}>
-          <MapPin size={13} color="#A8A8A5" />
-          <p style={{ fontSize: 13, color: "#6B6B68", margin: 0 }}>
+          <MapPin size={13} color={c.textFaint} />
+          <p style={{ fontSize: 13, color: c.textMuted, margin: 0 }}>
             {listing.location?.displayAddress || "Buea"}
             {listing.distanceFromUbKm ? ` · ${listing.distanceFromUbKm}km from UB` : ""}
           </p>
         </div>
         <div style={{ marginTop: 10 }}>
-          <span style={{ fontSize: 22, fontWeight: 700, color: "#1B4332" }}>
+          <span style={{ fontSize: 22, fontWeight: 700, color: c.green }}>
             ₣{listing.rentAmount?.toLocaleString() ?? "—"}
           </span>
-          <span style={{ fontSize: 13, color: "#6B6B68", marginLeft: 4 }}>/month</span>
+          <span style={{ fontSize: 13, color: c.textMuted, marginLeft: 4 }}>/month</span>
         </div>
       </div>
 
@@ -264,31 +287,31 @@ function ListingDetail() {
       <div style={{
         margin: "0 16px 16px",
         padding: "12px 14px",
-        backgroundColor: "#F9F7F2",
+        backgroundColor: c.surface,
         borderRadius: 12,
-        border: "0.5px solid #E8E4DC",
+        border: `0.5px solid ${c.border}`,
         display: "flex", alignItems: "center", gap: 12,
       }}>
         <div style={{
           width: 44, height: 44, borderRadius: "50%",
-          backgroundColor: "#1B4332", color: "#fff",
+          backgroundColor: c.green, color: "#fff",
           display: "flex", alignItems: "center", justifyContent: "center",
           fontSize: 18, fontWeight: 700, flexShrink: 0,
         }}>
           {landlordInitial}
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: "#1A1A18", display: "flex", alignItems: "center", gap: 6 }}>
+          <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: c.text, display: "flex", alignItems: "center", gap: 6 }}>
             {landlordName}
-            {listing.landlord?.isVerified && <ShieldCheck size={14} color="#D4A017" />}
+            {listing.landlord?.isVerified && <ShieldCheck size={14} color={c.amber} />}
           </p>
-          <p style={{ margin: "2px 0 0", fontSize: 12, color: "#6B6B68" }}>Landlord</p>
+          <p style={{ margin: "2px 0 0", fontSize: 12, color: c.textMuted }}>Landlord</p>
         </div>
         <div style={{ textAlign: "right" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 3, justifyContent: "flex-end", fontSize: 13, fontWeight: 600, color: "#1A1A18" }}>
-            <Star size={12} color="#D4A017" fill="#D4A017" /> 4.8
+          <div style={{ display: "flex", alignItems: "center", gap: 3, justifyContent: "flex-end", fontSize: 13, fontWeight: 600, color: c.text }}>
+            <Star size={12} color={c.amber} fill={c.amber} /> 4.8
           </div>
-          <p style={{ margin: "2px 0 0", fontSize: 11, color: "#A8A8A5" }}>Replies in ~1 hr</p>
+          <p style={{ margin: "2px 0 0", fontSize: 11, color: c.textFaint }}>Replies in ~1 hr</p>
         </div>
       </div>
 
@@ -304,10 +327,10 @@ function ListingDetail() {
       </div>
 
       {/* Description */}
-      <div style={{ padding: "0 16px 16px", borderTop: "0.5px solid #E8E4DC", paddingTop: 16 }}>
-        <h2 style={{ margin: "0 0 8px", fontSize: 13, fontWeight: 600, color: "#6B6B68", textTransform: "uppercase", letterSpacing: 0.5 }}>About</h2>
+      <div style={{ padding: "0 16px 16px", borderTop: `0.5px solid ${c.border}`, paddingTop: 16 }}>
+        <h2 style={{ margin: "0 0 8px", fontSize: 13, fontWeight: 600, color: c.textMuted, textTransform: "uppercase", letterSpacing: 0.5 }}>About</h2>
         <div style={{
-          fontSize: 14, color: "#6B6B68", lineHeight: 1.6,
+          fontSize: 14, color: c.textMuted, lineHeight: 1.6,
           overflow: "hidden",
           display: descExpanded ? "block" : "-webkit-box",
           WebkitLineClamp: descExpanded ? undefined : 3,
@@ -318,7 +341,7 @@ function ListingDetail() {
         {!descExpanded && listing.description?.length > 120 && (
           <button
             onClick={() => setDescExpanded(true)}
-            style={{ marginTop: 6, fontSize: 13, fontWeight: 600, color: "#1A1A18", background: "none", border: "none", cursor: "pointer", padding: 0 }}
+            style={{ marginTop: 6, fontSize: 13, fontWeight: 600, color: c.text, background: "none", border: "none", cursor: "pointer", padding: 0 }}
           >
             Read more
           </button>
@@ -327,16 +350,16 @@ function ListingDetail() {
 
       {/* Amenities */}
       {listing.amenities?.length > 0 && (
-        <div style={{ padding: "0 16px 16px", borderTop: "0.5px solid #E8E4DC", paddingTop: 16 }}>
-          <h2 style={{ margin: "0 0 12px", fontSize: 13, fontWeight: 600, color: "#6B6B68", textTransform: "uppercase", letterSpacing: 0.5 }}>Amenities</h2>
+        <div style={{ padding: "0 16px 16px", borderTop: `0.5px solid ${c.border}`, paddingTop: 16 }}>
+          <h2 style={{ margin: "0 0 12px", fontSize: 13, fontWeight: 600, color: c.textMuted, textTransform: "uppercase", letterSpacing: 0.5 }}>Amenities</h2>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px 16px" }}>
             {listing.amenities.map((a: string) => {
               const key = a.toLowerCase();
               const item = AMENITY_MAP[key];
               const Icon = item?.icon || CheckCircle;
               return (
-                <div key={a} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "#1A1A18" }}>
-                  <Icon size={15} color="#6B6B68" />
+                <div key={a} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: c.text }}>
+                  <Icon size={15} color={c.textMuted} />
                   {item?.label || a}
                 </div>
               );
@@ -346,14 +369,14 @@ function ListingDetail() {
       )}
 
       {/* Map */}
-      <div style={{ padding: "0 16px 16px", borderTop: "0.5px solid #E8E4DC", paddingTop: 16 }}>
-        <h2 style={{ margin: "0 0 10px", fontSize: 13, fontWeight: 600, color: "#6B6B68", textTransform: "uppercase", letterSpacing: 0.5 }}>Location</h2>
-        <div ref={mapContainer} style={{ width: "100%", height: 180, borderRadius: 12, backgroundColor: "#E8E4DC", overflow: "hidden" }} />
+      <div style={{ padding: "0 16px 16px", borderTop: `0.5px solid ${c.border}`, paddingTop: 16 }}>
+        <h2 style={{ margin: "0 0 10px", fontSize: 13, fontWeight: 600, color: c.textMuted, textTransform: "uppercase", letterSpacing: 0.5 }}>Location</h2>
+        <div ref={mapContainer} style={{ width: "100%", height: 180, borderRadius: 12, backgroundColor: c.surface, overflow: "hidden" }} />
         {listing.lat && listing.lng && (
           <a
             href={`https://www.google.com/maps?q=${listing.lat},${listing.lng}`}
             target="_blank" rel="noreferrer"
-            style={{ display: "inline-block", marginTop: 10, fontSize: 13, fontWeight: 600, color: "#1B4332", textDecoration: "none" }}
+            style={{ display: "inline-block", marginTop: 10, fontSize: 13, fontWeight: 600, color: c.green, textDecoration: "none" }}
           >
             Open in Google Maps →
           </a>
@@ -361,31 +384,31 @@ function ListingDetail() {
       </div>
 
       {/* Reviews */}
-      <div style={{ padding: "0 16px 16px", borderTop: "0.5px solid #E8E4DC", paddingTop: 16 }}>
+      <div style={{ padding: "0 16px 16px", borderTop: `0.5px solid ${c.border}`, paddingTop: 16 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-          <h2 style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#6B6B68", textTransform: "uppercase", letterSpacing: 0.5 }}>Reviews</h2>
-          <div style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 13, fontWeight: 600, color: "#1A1A18" }}>
-            <Star size={13} fill="#D4A017" color="#D4A017" /> 4.8 (12 reviews)
+          <h2 style={{ margin: 0, fontSize: 13, fontWeight: 600, color: c.textMuted, textTransform: "uppercase", letterSpacing: 0.5 }}>Reviews</h2>
+          <div style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 13, fontWeight: 600, color: c.text }}>
+            <Star size={13} fill={c.amber} color={c.amber} /> 4.8 (12 reviews)
           </div>
         </div>
-        <div style={{ padding: "12px 0", borderBottom: "0.5px solid #E8E4DC" }}>
+        <div style={{ padding: "12px 0", borderBottom: `0.5px solid ${c.border}` }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-            <div style={{ width: 28, height: 28, borderRadius: "50%", backgroundColor: "#E8E4DC", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700 }}>E</div>
-            <p style={{ margin: 0, fontSize: 13, fontWeight: 600, flex: 1 }}>Enow Emmanuel</p>
-            <p style={{ margin: 0, fontSize: 11, color: "#A8A8A5" }}>Oct 2024</p>
+            <div style={{ width: 28, height: 28, borderRadius: "50%", backgroundColor: c.surface, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, color: c.text }}>E</div>
+            <p style={{ margin: 0, fontSize: 13, fontWeight: 600, flex: 1, color: c.text }}>Enow Emmanuel</p>
+            <p style={{ margin: 0, fontSize: 11, color: c.textFaint }}>Oct 2024</p>
           </div>
           <div style={{ display: "flex", gap: 2, marginBottom: 6 }}>
-            {[1,2,3,4,5].map(i => <Star key={i} size={11} fill="#D4A017" color="#D4A017" />)}
+            {[1,2,3,4,5].map(i => <Star key={i} size={11} fill={c.amber} color={c.amber} />)}
           </div>
-          <p style={{ margin: 0, fontSize: 13, color: "#6B6B68", lineHeight: 1.5 }}>
+          <p style={{ margin: 0, fontSize: 13, color: c.textMuted, lineHeight: 1.5 }}>
             "Great place, very clean and close to campus. The landlord is responsive and helpful."
           </p>
         </div>
         <button style={{
           width: "100%", marginTop: 12, height: 40,
-          border: "0.5px solid #E8E4DC", borderRadius: 8,
-          fontSize: 13, fontWeight: 600, color: "#1A1A18",
-          backgroundColor: "#F9F7F2", cursor: "pointer"
+          border: `0.5px solid ${c.border}`, borderRadius: 8,
+          fontSize: 13, fontWeight: 600, color: c.text,
+          backgroundColor: c.surface, cursor: "pointer"
         }}>
           See all 12 reviews
         </button>
@@ -394,8 +417,8 @@ function ListingDetail() {
       {/* Sticky Bottom Action Bar */}
       <div style={{
         position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 40,
-        backgroundColor: "#FFFFFF",
-        borderTop: "0.5px solid #E8E4DC",
+        backgroundColor: c.bg,
+        borderTop: `0.5px solid ${c.border}`,
         padding: "12px 16px",
         paddingBottom: "calc(12px + env(safe-area-inset-bottom))",
       }}>

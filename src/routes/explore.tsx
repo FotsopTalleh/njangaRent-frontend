@@ -31,26 +31,32 @@ function ExplorePage() {
   const { data: listingsData, isLoading, isError } = useQuery({
     queryKey: ["listings", "explore", activeFilter],
     queryFn: async () => {
-      const params: Record<string, string> = { limit: "50" };
+      const params: Record<string, string> = { limit: "100" }; // Increase limit to show all
       const mapped = FILTER_MAP[activeFilter];
       if (mapped) params.propertyType = mapped;
       const res = await axiosClient.get("/listings", { params });
       return res.data;
     },
-    staleTime: 5 * 60 * 1000,
+    staleTime: 2 * 60 * 1000, // Refresh more often (2 min)
+    retry: 2,
   });
 
-  // Fallback to dummy data when backend is unavailable or returns empty
-  const isBackendEmpty = !isLoading && (!listingsData?.data || listingsData.data.length === 0);
-  const useDummy = isError || isBackendEmpty;
-  
-  let listings = listingsData?.data ?? [];
-  if (useDummy) {
-    const dummyParams: any = { limit: 50 };
-    const mapped = FILTER_MAP[activeFilter];
-    if (mapped) dummyParams.propertyType = mapped;
-    listings = paginateDummyListings(dummyParams).data;
-  }
+  // Normalise response shape — backend may return { data: [...] } or { listings: [...] } or directly an array
+  const rawListings: any[] =
+    Array.isArray(listingsData)                   ? listingsData         :
+    Array.isArray(listingsData?.data)             ? listingsData.data    :
+    Array.isArray(listingsData?.listings)         ? listingsData.listings :
+    [];
+
+  // Only fall back to dummy data when the backend actually errors (not just empty results)
+  const listings = isError && rawListings.length === 0
+    ? (() => {
+        const dummyParams: any = { limit: 100 };
+        const mapped = FILTER_MAP[activeFilter];
+        if (mapped) dummyParams.propertyType = mapped;
+        return paginateDummyListings(dummyParams).data;
+      })()
+    : rawListings;
 
   return (
     <div style={{ backgroundColor: "#F9F7F2", minHeight: "100vh", paddingBottom: "calc(56px + env(safe-area-inset-bottom))" }}>
