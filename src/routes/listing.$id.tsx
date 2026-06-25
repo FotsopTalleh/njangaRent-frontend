@@ -68,8 +68,8 @@ function ListingDetail() {
     queryFn: async () => {
       // Intercept dummy listing IDs — no network request needed
       if (id.startsWith("dummy-")) {
-        const { dummyListings } = await import("@/data/dummyListings");
-        const dummy = dummyListings.find(l => l.id === id);
+        const { DUMMY_LISTINGS } = await import("@/data/dummyListings");
+        const dummy = DUMMY_LISTINGS.find(l => l.id === id);
         if (dummy) return dummy;
         throw new Error("Listing not found");
       }
