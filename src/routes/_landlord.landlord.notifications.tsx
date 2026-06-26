@@ -1,9 +1,8 @@
-// Landlord Notifications — Supabase-backed (notifications table)
+// Landlord Notifications — backend API (no direct Supabase calls)
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Bell, BellOff, CheckCheck, Loader2, AlertTriangle } from "lucide-react";
-import { supabase } from "@/lib/supabase";
-import { useAuthStore } from "@/store/authStore";
+import { notificationsApi } from "@/api/notifications.api";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -24,47 +23,24 @@ const TYPE_CONFIG: Record<string, { label: string; color: string }> = {
 
 function NotificationsPage() {
   const qc = useQueryClient();
-  const user = useAuthStore((s) => s.user);
 
-  const { data = [], isLoading, error } = useQuery({
-    queryKey: ["notifications", user?.id],
-    queryFn: async () => {
-      if (!user?.id) return [];
-      const { data, error } = await supabase
-        .from("notifications")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false })
-        .limit(50);
-      if (error) throw new Error(error.message);
-      return data ?? [];
-    },
-    enabled: !!user?.id,
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["notifications"],
+    queryFn: () => notificationsApi.list({ limit: 50 }),
     refetchInterval: 30_000,
   });
 
   const markAllRead = useMutation({
-    mutationFn: async () => {
-      if (!user?.id) return;
-      const { error } = await supabase
-        .from("notifications")
-        .update({ read: true })
-        .eq("user_id", user.id)
-        .eq("read", false);
-      if (error) throw new Error(error.message);
-    },
+    mutationFn: () => notificationsApi.markAllRead(),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["notifications"] }),
   });
 
   const markRead = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from("notifications").update({ read: true }).eq("id", id);
-      if (error) throw new Error(error.message);
-    },
+    mutationFn: (id: string) => notificationsApi.markRead(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["notifications"] }),
   });
 
-  const notifications = data as any[];
+  const notifications = data?.data ?? [];
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   return (

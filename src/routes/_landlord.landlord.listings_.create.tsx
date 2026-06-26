@@ -3,7 +3,6 @@ import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { Loader2, AlertCircle, ArrowLeft, CheckCircle2 } from "lucide-react";
 import { listingsApi } from "@/api/listings.api";
-import { supabaseListings } from "@/lib/supabase";
 import { useAuthStore } from "@/store/authStore";
 import { ImageUpload } from "@/components/ImageUpload";
 import { MapPicker } from "@/components/MapPicker";
@@ -69,22 +68,23 @@ function CreateListing() {
         throw new Error("At least one exterior image is required.");
       }
 
-      return supabaseListings.create({
-        landlordId: user.id,
-        title: title.trim(),
-        description: description.trim(),
-        propertyType: propertyType,
-        rentAmount: parseInt(rentAmount),
-        rentPeriod: rentPeriod,
-        availableFrom: availableFrom,
-        maxOccupants: parseInt(maxOccupants),
-        rules: rules.trim(),
-        amenities: amenities,
-        lat: location?.lat,
-        lng: location?.lng,
-        exteriorFiles,
-        roomFiles,
-      }, setUploadPct);
+      // Build multipart form — backend handles image upload + DB insert via raw SQL (bypasses RLS)
+      const formData = new FormData();
+      formData.append("title",         title.trim());
+      formData.append("description",   description.trim());
+      formData.append("propertyType",  propertyType);
+      formData.append("rentAmount",    rentAmount);
+      formData.append("rentPeriod",    rentPeriod);
+      formData.append("availableFrom", availableFrom);
+      formData.append("maxOccupants",  maxOccupants);
+      formData.append("rules",         rules.trim());
+      formData.append("amenities",     amenities.join(","));
+      if (location?.lat != null) formData.append("lat", String(location.lat));
+      if (location?.lng != null) formData.append("lng", String(location.lng));
+      exteriorFiles.forEach((f) => formData.append("exteriorImages", f));
+      roomFiles.forEach((f)     => formData.append("roomImages",     f));
+
+      return listingsApi.create(formData, setUploadPct);
     },
     onSuccess: () => setCreated(true),
     onError: (err: { message?: string }) => setError(err?.message ?? "Failed to create listing."),

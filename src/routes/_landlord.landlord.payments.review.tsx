@@ -1,9 +1,8 @@
-// Landlord Payment Review — Supabase-backed (nkwa_payments table)
+// Landlord Payment Review — backend API (no direct Supabase calls)
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { FileCheck, Loader2, AlertTriangle, CheckCircle2, XCircle, Clock } from "lucide-react";
-import { supabase } from "@/lib/supabase";
-import { useAuthStore } from "@/store/authStore";
+import { paymentsApi } from "@/api/payments.api";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_landlord/landlord/payments/review")({
@@ -22,38 +21,17 @@ function formatXAF(n: number) {
 }
 
 function PaymentReviewPage() {
-  const user = useAuthStore((s) => s.user);
-
-  // Get all listings for this landlord first
-  const { data: listingIds = [] } = useQuery({
-    queryKey: ["landlord-listing-ids", user?.id],
-    queryFn: async () => {
-      if (!user?.id) return [];
-      const { data } = await supabase.from("listings").select("id").eq("landlord_id", user.id);
-      return (data ?? []).map((l: any) => l.id);
-    },
-    enabled: !!user?.id,
+  // Fetch all payments for landlord via backend (raw SQL, bypasses RLS)
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["landlord-payments"],
+    queryFn: () => paymentsApi.list({ limit: 100 }),
   });
 
-  // Then get payments for those listings
-  const { data: payments = [], isLoading, error } = useQuery({
-    queryKey: ["landlord-payments", listingIds],
-    queryFn: async () => {
-      if (!listingIds.length) return [];
-      const { data, error } = await supabase
-        .from("nkwa_payments")
-        .select("*")
-        .in("listing_id", listingIds)
-        .order("created_at", { ascending: false });
-      if (error) throw new Error(error.message);
-      return data ?? [];
-    },
-    enabled: listingIds.length > 0,
-  });
+  const payments = data?.data ?? [];
 
-  const totalConfirmed = (payments as any[])
-    .filter((p: any) => p.nkwa_status === "confirmed")
-    .reduce((s, p) => s + (p.amount_xaf ?? p.amount ?? 0), 0);
+  const totalConfirmed = payments
+    .filter((p: any) => p.status === "approved")
+    .reduce((s, p) => s + (p.amountVerified ?? p.amountClaimed ?? 0), 0);
 
   return (
     <div className="space-y-6">
