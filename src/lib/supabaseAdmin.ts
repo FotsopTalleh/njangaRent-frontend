@@ -19,16 +19,26 @@ export interface AdminStats {
 }
 
 export async function getAdminStats(): Promise<AdminStats> {
+  // Run both queries, but don't let one failure block the other
   const [listingsRes, usersRes] = await Promise.all([
     supabase.from("listings").select("id, status"),
     supabase.from("users").select("id, role, status"),
   ]);
 
-  if (listingsRes.error) throw new Error(listingsRes.error.message);
-  if (usersRes.error) throw new Error(usersRes.error.message);
+  // Listings: throw if there's a real error (table exists but query failed)
+  if (listingsRes.error) {
+    console.warn("[getAdminStats] listings query error:", listingsRes.error.message);
+    // Surface the actual error message to help diagnose
+    throw new Error(`Stats unavailable: ${listingsRes.error.message}`);
+  }
 
+  // Users: gracefully degrade if the users table doesn't exist yet
   const listings = listingsRes.data ?? [];
-  const users = usersRes.data ?? [];
+  const users = usersRes.error ? [] : (usersRes.data ?? []);
+
+  if (usersRes.error) {
+    console.warn("[getAdminStats] users query error (non-fatal):", usersRes.error.message);
+  }
 
   return {
     totalListings:   listings.length,

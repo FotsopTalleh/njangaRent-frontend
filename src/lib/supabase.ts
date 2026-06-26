@@ -5,9 +5,12 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 const SUPABASE_URL  = import.meta.env.VITE_SUPABASE_URL  as string | undefined;
-const SUPABASE_KEY  = import.meta.env.VITE_SUPABASE_SERVICE_KEY as string | undefined;
+// Prefer service key (bypasses RLS) but fall back to anon key so the client is always functional
+const SUPABASE_KEY  = (
+  import.meta.env.VITE_SUPABASE_SERVICE_KEY ||
+  import.meta.env.VITE_SUPABASE_ANON_KEY
+) as string | undefined;
 
-// Surface a clear error in the UI rather than crashing silently
 if (!SUPABASE_URL || !SUPABASE_KEY) {
   console.error(
     "[supabase] ⚠ VITE_SUPABASE_URL or VITE_SUPABASE_SERVICE_KEY is missing.\n" +
@@ -15,17 +18,11 @@ if (!SUPABASE_URL || !SUPABASE_KEY) {
   );
 }
 
-// Export a real client (or a stub that throws friendly errors if keys are missing)
-export let supabase: SupabaseClient;
-try {
-  supabase = createClient(SUPABASE_URL!, SUPABASE_KEY!);
-} catch {
-  // Fallback stub — every call will throw the message below
-  supabase = {
-    from: () => { throw new Error("Supabase not configured — check your .env file"); },
-    storage: { from: () => { throw new Error("Supabase not configured"); } },
-  } as any;
-}
+// Always create a real client — surfaces actual Supabase errors instead of a generic stub message
+export const supabase = createClient(
+  SUPABASE_URL  ?? "https://placeholder.supabase.co",
+  SUPABASE_KEY  ?? "placeholder-key",
+);
 
 // ── DB column → frontend field normaliser ─────────────────────────────────────
 // The DB uses snake_case; the frontend uses camelCase.
