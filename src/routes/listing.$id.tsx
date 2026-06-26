@@ -8,7 +8,6 @@ import {
   CheckCircle, AlertCircle, XCircle, BedDouble, Bath, MessageSquare,
 } from "lucide-react";
 import { useAuthStore } from "@/store/authStore";
-import { axiosClient } from "@/api/axiosClient";
 import { useThemeStore } from "@/store/themeStore";
 import { toast } from "sonner";
 
@@ -63,7 +62,7 @@ function ListingDetail() {
     emblaApi.on("select", () => setSelectedIndex(emblaApi.selectedScrollSnap()));
   }, [emblaApi]);
 
-  const { data: listing, isLoading, isError } = useQuery({
+  const { data: listing, isLoading, isError, error: listingError } = useQuery({
     queryKey: ["listing", id],
     queryFn: async () => {
       // Intercept dummy listing IDs — no network request needed
@@ -77,7 +76,7 @@ function ListingDetail() {
       const { supabaseListings } = await import("@/lib/supabase");
       return supabaseListings.getById(id);
     },
-    retry: 1,
+    retry: false,  // show error immediately; don't hammer the DB
   });
 
   const { data: rawSlots = [] } = useQuery({
@@ -123,23 +122,26 @@ function ListingDetail() {
 
   const startChat = useMutation({
     mutationFn: async () => {
-      if (!listing?.landlord_id) throw new Error("No landlord info");
+      // landlordId is available in the normalised listing object
+      const landlordId = listing?.landlordId ?? listing?.landlord_id;
+      if (!landlordId) throw new Error("No landlord info available");
       const res = await fetch(`/api/messages/threads`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({
-          landlordId: listing.landlord_id,
-          listingId: listing.id,
-          body: `Hi, I'm interested in "${listing.title}". Is it still available?`,
+          landlordId,
+          listingId: listing?.id,
+          body: `Hi, I'm interested in "${listing?.title}". Is it still available?`,
         }),
       });
       if (!res.ok) throw new Error("Could not start chat");
       return res.json();
     },
     onSuccess: (data) => {
-      router.navigate({ to: `/messages/${data.data.threadId}` });
+      const threadId = data?.data?.threadId ?? data?.threadId;
+      if (threadId) router.navigate({ to: `/messages/${threadId}` });
     },
-    onError: () => toast.error("Could not start chat."),
+    onError: () => toast.error("Could not start chat — messaging requires the backend."),
   });
 
   // Map thumbnail
@@ -180,10 +182,12 @@ function ListingDetail() {
   }
 
   if (!listing || isError) {
+    const msg = (listingError as Error)?.message ?? "Could not load listing";
     return (
       <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", backgroundColor: c.bg }}>
         <div style={{ textAlign: "center", padding: "0 24px" }}>
-          <p style={{ color: c.textMuted, fontSize: 15, marginBottom: 12 }}>Listing not found or could not be loaded.</p>
+          <p style={{ color: c.textMuted, fontSize: 15, marginBottom: 4 }}>{msg}</p>
+          <p style={{ color: c.textFaint, fontSize: 12, marginBottom: 16 }}>ID: {id}</p>
           <button
             onClick={() => router.history.back()}
             style={{ padding: "10px 20px", backgroundColor: c.green, color: "#fff", border: "none", borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: "pointer" }}
