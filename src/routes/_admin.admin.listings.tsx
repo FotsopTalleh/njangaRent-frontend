@@ -1,8 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Building2, CheckCircle2, Flag, Trash2 } from "lucide-react";
-import { adminApi } from "@/api/admin.api";
+import { Loader2, Building2, CheckCircle2, Flag, Trash2, AlertTriangle } from "lucide-react";
+import { getAdminListings, adminApproveListing, adminFlagListing, adminRemoveListing } from "@/lib/supabaseAdmin";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
@@ -31,19 +31,19 @@ function AdminListings() {
   const [actionReason, setActionReason] = useState("");
   const [actionType, setActionType] = useState<"flag" | "remove" | null>(null);
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, error } = useQuery({
     queryKey: ["admin-listings", statusFilter],
-    queryFn:  () => adminApi.getListings({ status: statusFilter, limit: 50 }),
+    queryFn: () => getAdminListings({ status: statusFilter, limit: 50 }),
   });
 
   const approveMut = useMutation({
-    mutationFn: (id: string) => adminApi.approveListing(id),
-    onSuccess:  () => qc.invalidateQueries({ queryKey: ["admin-listings"] }),
+    mutationFn: (id: string) => adminApproveListing(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-listings"] }),
   });
 
   const actionMut = useMutation({
     mutationFn: ({ id, type, reason }: { id: string; type: "flag" | "remove"; reason: string }) =>
-      type === "flag" ? adminApi.flagListing(id, reason) : adminApi.removeListing(id, reason),
+      type === "flag" ? adminFlagListing(id, reason) : adminRemoveListing(id, reason),
     onSuccess: () => {
       setActionId(null); setActionReason(""); setActionType(null);
       qc.invalidateQueries({ queryKey: ["admin-listings"] });
@@ -70,6 +70,14 @@ function AdminListings() {
           <SelectItem value="deactivated">Deactivated</SelectItem>
         </SelectContent>
       </Select>
+
+      {/* Error banner */}
+      {error && (
+        <div className="flex items-center gap-3 p-4 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-sm">
+          <AlertTriangle className="h-4 w-4 shrink-0" />
+          <span>Could not load listings: {(error as Error).message}</span>
+        </div>
+      )}
 
       {isLoading && (
         <div className="flex justify-center py-16" aria-busy="true">
@@ -108,10 +116,10 @@ function AdminListings() {
                   <div className="flex items-start justify-between gap-2 flex-wrap">
                     <div>
                       <p className="font-semibold text-sm line-clamp-1">{listing.title as string}</p>
-                      <p className="text-xs text-muted-foreground">{listing.propertyType as string} &bull; {formatXAF((listing.rentAmount as number) ?? 0)}/{listing.rentPeriod as string}</p>
-                      {listing.location != null && (
+                      <p className="text-xs text-muted-foreground">{String(listing.property_type ?? "")} &bull; {formatXAF((listing.rent_amount as number) ?? 0)}/{String(listing.rent_period ?? "")}</p>
+                      {listing.display_address != null && (
                         <p className="text-xs text-muted-foreground mt-0.5">
-                          {String(((listing.location as Record<string, unknown>).displayAddress) ?? "No address")}
+                          {String(listing.display_address ?? "No address")}
                         </p>
                       )}
                     </div>

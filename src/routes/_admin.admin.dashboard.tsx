@@ -1,11 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Users, Building2, Home, CircleDollarSign, Loader2, ArrowUp, AlertTriangle } from "lucide-react";
-import { adminApi } from "@/api/admin.api";
+import { Users, Building2, Home, CircleDollarSign, Loader2, AlertTriangle, RefreshCw } from "lucide-react";
+import { getAdminStats } from "@/lib/supabaseAdmin";
+import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, Cell } from "recharts";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
@@ -15,10 +16,13 @@ export const Route = createFileRoute("/_admin/admin/dashboard")({
 });
 
 function formatXAF(n: number) {
-  return new Intl.NumberFormat("fr-CM", { style: "currency", currency: "XAF", notation: "compact", maximumFractionDigits: 1 }).format(n);
+  return new Intl.NumberFormat("fr-CM", {
+    style: "currency", currency: "XAF",
+    notation: "compact", maximumFractionDigits: 1,
+  }).format(n);
 }
 
-// Mock data for the Revenue Chart
+// Chart data — will be replaced with real data when payment table is added
 const revenueData = [
   { month: "Jan", revenue: 4.2 },
   { month: "Feb", revenue: 5.1 },
@@ -26,130 +30,141 @@ const revenueData = [
   { month: "Apr", revenue: 7.3 },
   { month: "May", revenue: 8.9 },
   { month: "Jun", revenue: 9.2 },
-  { month: "Jul", revenue: 12.4 }, // Highlighted
+  { month: "Jul", revenue: 12.4 },
 ];
 
+function StatCard({
+  icon, iconBg, iconColor, value, label,
+}: {
+  icon: React.ReactNode;
+  iconBg: string;
+  iconColor: string;
+  value: string | number;
+  label: string;
+}) {
+  return (
+    <Card className="rounded-2xl border-border/50 shadow-soft overflow-hidden">
+      <CardContent className="p-6 flex flex-col justify-between h-full">
+        <div className={cn("h-10 w-10 rounded-xl flex items-center justify-center mb-4", iconBg)}>
+          <span className={iconColor}>{icon}</span>
+        </div>
+        <div>
+          <h3 className="text-3xl font-bold tracking-tight text-foreground">
+            {value}
+          </h3>
+          <p className="text-sm text-muted-foreground font-medium mb-1">{label}</p>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 function AdminDashboard() {
-  const { data: stats, isLoading: statsLoading } = useQuery({
-    queryKey: ["admin-dashboard"],
-    queryFn: adminApi.getDashboard,
+  // ── Live stats from Supabase ─────────────────────────────────────────────
+  const { data: stats, isLoading: statsLoading, error: statsError, refetch } = useQuery({
+    queryKey: ["admin-dashboard-stats"],
+    queryFn: getAdminStats,
+    refetchInterval: 60_000,
+    staleTime: 30_000,
+  });
+
+  // ── Recent pending landlords ─────────────────────────────────────────────
+  const { data: pendingLandlords = [], isLoading: landlordLoading } = useQuery({
+    queryKey: ["admin-pending-landlords"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("users")
+        .select("id, full_name, email, status, role, created_at")
+        .eq("role", "landlord")
+        .eq("status", "PENDING")
+        .order("created_at", { ascending: false })
+        .limit(5);
+      if (error) throw new Error(error.message);
+      return data ?? [];
+    },
     refetchInterval: 60_000,
   });
 
-  const { data: landlordsData, isLoading: landlordsLoading } = useQuery({
-    queryKey: ["admin-recent-landlords"],
-    queryFn: () => adminApi.getLandlordVerifications(1, 5),
+  // ── Recent listings for review ──────────────────────────────────────────
+  const { data: pendingListings = [], isLoading: listingsLoading } = useQuery({
+    queryKey: ["admin-pending-listings"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("listings")
+        .select("id, title, property_type, rent_amount, display_address, status, created_at")
+        .eq("status", "pending_admin_review")
+        .order("created_at", { ascending: false })
+        .limit(5);
+      if (error) throw new Error(error.message);
+      return data ?? [];
+    },
     refetchInterval: 60_000,
   });
-
-  const defaultStats = {
-    activeUsers: 2543,
-    activeListings: 847,
-    paymentsThisMonth: 124,
-    paymentsThisMonthXaf: 4500000,
-    pendingVerifications: 12,
-  };
-
-  // Fallback to dummy data if stats is missing or empty
-  const displayStats = stats?.activeUsers ? stats : defaultStats;
-
-  const dummyLandlords = [
-    { id: "1", fullName: "John Doe", email: "john@example.com", status: "PENDING" },
-    { id: "2", fullName: "Jane Smith", email: "jane@example.com", status: "PENDING" },
-    { id: "3", fullName: "Michael Johnson", email: "mike@example.com", status: "PENDING" },
-  ];
-
-  const recentLandlords = landlordsData?.data?.length ? landlordsData.data : dummyLandlords;
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-foreground">Overview</h1>
-          <p className="text-sm text-muted-foreground mt-1">NjangaRent · May 2026</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            NjangaRent Admin · Live data from Supabase
+          </p>
         </div>
         <div className="flex items-center gap-3">
           <Badge variant="outline" className="bg-success/10 text-success border-success/20 px-3 py-1">
-            <span className="h-1.5 w-1.5 rounded-full bg-success mr-2" /> Live
+            <span className="h-1.5 w-1.5 rounded-full bg-success mr-2 inline-block" /> Live
           </Badge>
-          <Button variant="default" className="rounded-full shadow-soft bg-primary text-primary-foreground">
-            Pending <Badge className="ml-2 bg-amber-500 text-white border-0 hover:bg-amber-600">3</Badge>
+          <Button variant="outline" size="sm" className="rounded-full gap-2" onClick={() => refetch()}>
+            <RefreshCw className="h-3.5 w-3.5" /> Refresh
           </Button>
         </div>
       </div>
 
+      {/* Error banner */}
+      {statsError && (
+        <div className="flex items-center gap-3 p-4 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-sm">
+          <AlertTriangle className="h-4 w-4 shrink-0" />
+          <span>Could not load stats: {(statsError as Error).message}</span>
+        </div>
+      )}
+
+      {/* Stat Cards */}
       {statsLoading ? (
         <div className="flex items-center justify-center py-16" aria-busy="true">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" aria-hidden="true" />
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
       ) : (
         <>
-          {/* Top Stat Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {/* Total Users */}
-            <Card className="rounded-2xl border-border/50 shadow-soft overflow-hidden">
-              <CardContent className="p-6 flex flex-col justify-between h-full">
-                <div className="h-10 w-10 rounded-xl bg-indigo-100 flex items-center justify-center mb-4">
-                  <Users className="h-5 w-5 text-indigo-600" />
-                </div>
-                <div>
-                  <h3 className="text-3xl font-bold tracking-tight text-foreground">
-                    {displayStats.activeUsers ? displayStats.activeUsers.toLocaleString() : "0"}
-                  </h3>
-                  <p className="text-sm text-muted-foreground font-medium mb-1">Total Users</p>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Active Providers */}
-            <Card className="rounded-2xl border-border/50 shadow-soft overflow-hidden">
-              <CardContent className="p-6 flex flex-col justify-between h-full">
-                <div className="h-10 w-10 rounded-xl bg-teal-100 flex items-center justify-center mb-4">
-                  <Building2 className="h-5 w-5 text-teal-600" />
-                </div>
-                <div>
-                  <h3 className="text-3xl font-bold tracking-tight text-foreground">
-                    {displayStats.pendingLandlords ?? "0"}
-                  </h3>
-                  <p className="text-sm text-muted-foreground font-medium mb-1">Active Providers</p>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Total Listings */}
-            <Card className="rounded-2xl border-border/50 shadow-soft overflow-hidden">
-              <CardContent className="p-6 flex flex-col justify-between h-full">
-                <div className="h-10 w-10 rounded-xl bg-orange-100 flex items-center justify-center mb-4">
-                  <Home className="h-5 w-5 text-orange-500" />
-                </div>
-                <div>
-                  <h3 className="text-3xl font-bold tracking-tight text-foreground">
-                    {displayStats.activeListings ? displayStats.activeListings.toLocaleString() : "0"}
-                  </h3>
-                  <p className="text-sm text-muted-foreground font-medium mb-1">Total Listings</p>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* FCFA Processed */}
-            <Card className="rounded-2xl border-border/50 shadow-soft overflow-hidden">
-              <CardContent className="p-6 flex flex-col justify-between h-full">
-                <div className="h-10 w-10 rounded-xl bg-amber-100 flex items-center justify-center mb-4">
-                  <CircleDollarSign className="h-5 w-5 text-amber-600" />
-                </div>
-                <div>
-                  <h3 className="text-3xl font-bold tracking-tight text-foreground">
-                    {displayStats.paymentsThisMonthXaf ? formatXAF(displayStats.paymentsThisMonthXaf).replace("FCFA", "").trim() : "0"}
-                  </h3>
-                  <p className="text-sm text-muted-foreground font-medium mb-1">FCFA Processed</p>
-                </div>
-              </CardContent>
-            </Card>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <StatCard
+              icon={<Users className="h-5 w-5" />}
+              iconBg="bg-indigo-100" iconColor="text-indigo-600"
+              value={(stats?.totalUsers ?? 0).toLocaleString()}
+              label="Total Users"
+            />
+            <StatCard
+              icon={<Building2 className="h-5 w-5" />}
+              iconBg="bg-teal-100" iconColor="text-teal-600"
+              value={(stats?.totalLandlords ?? 0).toLocaleString()}
+              label="Landlords"
+            />
+            <StatCard
+              icon={<Home className="h-5 w-5" />}
+              iconBg="bg-orange-100" iconColor="text-orange-500"
+              value={(stats?.activeListings ?? 0).toLocaleString()}
+              label="Active Listings"
+            />
+            <StatCard
+              icon={<AlertTriangle className="h-5 w-5" />}
+              iconBg="bg-amber-100" iconColor="text-amber-600"
+              value={(stats?.pendingListings ?? 0).toLocaleString()}
+              label="Pending Review"
+            />
           </div>
 
-          {/* Middle Row: Charts & Pending Actions */}
+          {/* Charts row */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            {/* Revenue Chart */}
             <Card className="rounded-2xl border-border/50 shadow-soft lg:col-span-2">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-base font-bold text-foreground">Revenue 2026 (M FCFA)</CardTitle>
@@ -159,11 +174,12 @@ function AdminDashboard() {
                 <div className="h-[200px] w-full mt-4">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={revenueData} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
-                      <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#888888' }} dy={10} />
-                      <Tooltip cursor={{ fill: 'transparent' }} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} />
+                      <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: "#888888" }} dy={10} />
+                      <YAxis hide />
+                      <Tooltip cursor={{ fill: "transparent" }} contentStyle={{ borderRadius: "8px", border: "none", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }} />
                       <Bar dataKey="revenue" radius={[4, 4, 0, 0]}>
-                        {revenueData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={index === revenueData.length - 1 ? "#F97316" : "#6B7280"} />
+                        {revenueData.map((_, i) => (
+                          <Cell key={i} fill={i === revenueData.length - 1 ? "#F97316" : "#6B7280"} />
                         ))}
                       </Bar>
                     </BarChart>
@@ -172,113 +188,150 @@ function AdminDashboard() {
               </CardContent>
             </Card>
 
-            {/* Pending Actions */}
+            {/* Pending actions summary */}
             <Card className="rounded-2xl border-border/50 shadow-soft flex flex-col">
               <CardHeader className="pb-4">
                 <CardTitle className="text-base font-bold text-foreground">Pending Actions</CardTitle>
               </CardHeader>
               <CardContent className="flex-1 flex flex-col gap-3">
-                <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-100">
-                  <div className="flex items-center gap-3">
-                    <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center">
-                      <Users className="h-4 w-4 text-blue-600" />
+                <Link to="/admin/verifications/landlords" className="block">
+                  <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 hover:border-primary/30 transition-colors">
+                    <div className="flex items-center gap-3">
+                      <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center">
+                        <Users className="h-4 w-4 text-blue-600" />
+                      </div>
+                      <span className="text-sm font-medium">Landlord Verify</span>
                     </div>
-                    <span className="text-sm font-medium">Verifications</span>
+                    <Badge variant="secondary" className="bg-amber-100 text-amber-700 hover:bg-amber-100 border-0">
+                      {stats?.pendingLandlords ?? 0} pending
+                    </Badge>
                   </div>
-                  <Badge variant="secondary" className="bg-amber-100 text-amber-700 hover:bg-amber-100 border-0">
-                    {stats?.pendingVerifications || 3} pending
-                  </Badge>
-                </div>
+                </Link>
 
-                <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-100">
-                  <div className="flex items-center gap-3">
-                    <div className="h-8 w-8 rounded-full bg-emerald-100 flex items-center justify-center">
-                      <Home className="h-4 w-4 text-emerald-600" />
+                <Link to="/admin/listings" className="block">
+                  <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 hover:border-primary/30 transition-colors">
+                    <div className="flex items-center gap-3">
+                      <div className="h-8 w-8 rounded-full bg-emerald-100 flex items-center justify-center">
+                        <Home className="h-4 w-4 text-emerald-600" />
+                      </div>
+                      <span className="text-sm font-medium">New Listings</span>
                     </div>
-                    <span className="text-sm font-medium">New Listings</span>
+                    <Badge variant="secondary" className="bg-blue-100 text-blue-700 hover:bg-blue-100 border-0">
+                      {stats?.pendingListings ?? 0} to review
+                    </Badge>
                   </div>
-                  <Badge variant="secondary" className="bg-blue-100 text-blue-700 hover:bg-blue-100 border-0">
-                    8 to review
-                  </Badge>
-                </div>
+                </Link>
 
-                <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-100">
-                  <div className="flex items-center gap-3">
-                    <div className="h-8 w-8 rounded-full bg-rose-100 flex items-center justify-center">
-                      <AlertTriangle className="h-4 w-4 text-rose-600" />
+                <Link to="/admin/listings" className="block">
+                  <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 hover:border-primary/30 transition-colors">
+                    <div className="flex items-center gap-3">
+                      <div className="h-8 w-8 rounded-full bg-rose-100 flex items-center justify-center">
+                        <AlertTriangle className="h-4 w-4 text-rose-600" />
+                      </div>
+                      <span className="text-sm font-medium">Flagged</span>
                     </div>
-                    <span className="text-sm font-medium">Reports</span>
+                    <Badge variant="secondary" className="bg-rose-100 text-rose-700 hover:bg-rose-100 border-0">
+                      {stats?.flaggedListings ?? 0} flagged
+                    </Badge>
                   </div>
-                  <Badge variant="secondary" className="bg-rose-100 text-rose-700 hover:bg-rose-100 border-0">
-                    {stats?.flaggedListings || 2} flagged
-                  </Badge>
-                </div>
+                </Link>
               </CardContent>
             </Card>
           </div>
 
-          {/* Bottom Row: Recent Provider Applications */}
-          <Card className="rounded-2xl border-border/50 shadow-soft mt-4">
+          {/* Pending Listings */}
+          <Card className="rounded-2xl border-border/50 shadow-soft">
             <CardHeader className="flex flex-row items-center justify-between border-b pb-4">
-              <CardTitle className="text-base font-bold text-foreground">Recent Provider Applications</CardTitle>
-              <Button variant="default" className="bg-primary text-primary-foreground shadow-sm rounded-lg h-9">
-                Review All
+              <CardTitle className="text-base font-bold text-foreground">Listings Pending Review</CardTitle>
+              <Button asChild variant="default" className="bg-primary text-primary-foreground shadow-sm rounded-lg h-9">
+                <Link to="/admin/listings">Review All →</Link>
               </Button>
             </CardHeader>
             <CardContent className="p-0">
-              {landlordsLoading ? (
+              {listingsLoading ? (
                 <div className="flex items-center justify-center py-12">
-                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                 </div>
-              ) : recentLandlords.length > 0 ? (
-                <div className="flex flex-col">
-                  {recentLandlords.map((landlord: any, idx: number) => {
-                    const name = landlord.name || landlord.email || "Unknown Provider";
-                    const initials = name.split(" ").map((n: string) => n[0]).join("").substring(0, 2).toUpperCase();
-                    const date = landlord.createdAt ? new Date(landlord.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "May 23, 2026";
-                    const role = "Landlord";
-                    const address = landlord.metadata?.address || "Buea";
-                    const status = landlord.status || "pending";
-                    
-                    return (
-                      <div key={landlord.id || idx} className="flex items-center justify-between p-4 border-b last:border-0 hover:bg-accent/50 transition-colors">
-                        <div className="flex items-center gap-4">
-                          <Avatar className={cn("h-10 w-10", idx === 0 ? "bg-emerald-700" : idx === 1 ? "bg-blue-800" : idx === 2 ? "bg-indigo-600" : "bg-amber-600")}>
-                            <AvatarImage src={landlord.avatarUrl} />
-                            <AvatarFallback className="text-white bg-inherit">{initials}</AvatarFallback>
-                          </Avatar>
-                          <div>
-                            <p className="text-sm font-bold text-foreground">{name}</p>
-                            <p className="text-xs text-muted-foreground mt-0.5">{role} · {address} · {date}</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-4">
-                          {status === "pending" ? (
-                            <Badge variant="outline" className="bg-amber-100 text-amber-700 border-0 px-2 py-0.5 font-medium rounded-full">
-                              pending
-                            </Badge>
-                          ) : (
-                            <Badge variant="outline" className="bg-rose-100 text-rose-700 border-0 px-2 py-0.5 font-medium rounded-full">
-                              rejected
-                            </Badge>
-                          )}
-                          <Button asChild variant="default" className="bg-primary text-primary-foreground rounded-lg h-9">
-                            <Link to="/admin/verifications/landlords">
-                              Review &rarr;
-                            </Link>
-                          </Button>
-                        </div>
-                      </div>
-                    );
-                  })}
+              ) : pendingListings.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 text-center">
+                  <div className="h-12 w-12 rounded-full bg-slate-100 flex items-center justify-center mb-3">
+                    <Home className="h-6 w-6 text-slate-400" />
+                  </div>
+                  <h3 className="text-sm font-medium text-foreground">No pending listings</h3>
+                  <p className="text-xs text-muted-foreground mt-1">All listings have been reviewed.</p>
                 </div>
               ) : (
+                <div className="flex flex-col divide-y divide-border">
+                  {pendingListings.map((l: any) => (
+                    <div key={l.id} className="flex items-center justify-between p-4 hover:bg-accent/50 transition-colors">
+                      <div>
+                        <p className="text-sm font-semibold text-foreground">{l.title}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {l.property_type} · {l.display_address || "Buea"} · {(l.rent_amount ?? 0).toLocaleString()} XAF
+                        </p>
+                      </div>
+                      <Button asChild variant="default" size="sm" className="bg-primary text-primary-foreground rounded-lg h-8 text-xs">
+                        <Link to="/admin/listings">Review →</Link>
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Recent Provider Applications */}
+          <Card className="rounded-2xl border-border/50 shadow-soft">
+            <CardHeader className="flex flex-row items-center justify-between border-b pb-4">
+              <CardTitle className="text-base font-bold text-foreground">Recent Landlord Applications</CardTitle>
+              <Button asChild variant="default" className="bg-primary text-primary-foreground shadow-sm rounded-lg h-9">
+                <Link to="/admin/verifications/landlords">Review All →</Link>
+              </Button>
+            </CardHeader>
+            <CardContent className="p-0">
+              {landlordLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                </div>
+              ) : pendingLandlords.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 text-center">
                   <div className="h-12 w-12 rounded-full bg-slate-100 flex items-center justify-center mb-3">
                     <Users className="h-6 w-6 text-slate-400" />
                   </div>
                   <h3 className="text-sm font-medium text-foreground">No pending applications</h3>
-                  <p className="text-xs text-muted-foreground mt-1">All provider applications have been reviewed.</p>
+                  <p className="text-xs text-muted-foreground mt-1">All landlord applications have been reviewed.</p>
+                </div>
+              ) : (
+                <div className="flex flex-col divide-y divide-border">
+                  {pendingLandlords.map((u: any, idx: number) => {
+                    const name = u.full_name || u.email || "Unknown";
+                    const initials = name.split(" ").map((n: string) => n[0]).join("").substring(0, 2).toUpperCase();
+                    const date = u.created_at
+                      ? new Date(u.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+                      : "—";
+                    const colors = ["bg-emerald-700", "bg-blue-800", "bg-indigo-600", "bg-amber-600", "bg-rose-700"];
+                    return (
+                      <div key={u.id} className="flex items-center justify-between p-4 hover:bg-accent/50 transition-colors">
+                        <div className="flex items-center gap-4">
+                          <Avatar className={cn("h-10 w-10", colors[idx % colors.length])}>
+                            <AvatarFallback className="text-white bg-inherit text-sm font-bold">{initials}</AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <p className="text-sm font-bold text-foreground">{name}</p>
+                            <p className="text-xs text-muted-foreground mt-0.5">{u.email} · {date}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <Badge variant="outline" className="bg-amber-100 text-amber-700 border-0 px-2 py-0.5 font-medium rounded-full">
+                            pending
+                          </Badge>
+                          <Button asChild variant="default" size="sm" className="bg-primary text-primary-foreground rounded-lg h-8 text-xs">
+                            <Link to="/admin/verifications/landlords">Review →</Link>
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </CardContent>

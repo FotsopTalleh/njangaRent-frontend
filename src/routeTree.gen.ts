@@ -48,6 +48,7 @@ import { Route as LandlordLandlordInboxRouteImport } from './routes/_landlord.la
 import { Route as LandlordLandlordDashboardRouteImport } from './routes/_landlord.landlord.dashboard'
 import { Route as LandlordLandlordAppointmentsRouteImport } from './routes/_landlord.landlord.appointments'
 import { Route as AdminAdminUsersRouteImport } from './routes/_admin.admin.users'
+import { Route as AdminAdminSettingsRouteImport } from './routes/_admin.admin.settings'
 import { Route as AdminAdminPaymentsRouteImport } from './routes/_admin.admin.payments'
 import { Route as AdminAdminMessagesRouteImport } from './routes/_admin.admin.messages'
 import { Route as AdminAdminListingsRouteImport } from './routes/_admin.admin.listings'
@@ -258,6 +259,11 @@ const AdminAdminUsersRoute = AdminAdminUsersRouteImport.update({
   path: '/admin/users',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminAdminSettingsRoute = AdminAdminSettingsRouteImport.update({
+  id: '/admin/settings',
+  path: '/admin/settings',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminAdminPaymentsRoute = AdminAdminPaymentsRouteImport.update({
   id: '/admin/payments',
   path: '/admin/payments',
@@ -330,6 +336,7 @@ export interface FileRoutesByFullPath {
   '/admin/listings': typeof AdminAdminListingsRoute
   '/admin/messages': typeof AdminAdminMessagesRoute
   '/admin/payments': typeof AdminAdminPaymentsRoute
+  '/admin/settings': typeof AdminAdminSettingsRoute
   '/admin/users': typeof AdminAdminUsersRoute
   '/landlord/appointments': typeof LandlordLandlordAppointmentsRoute
   '/landlord/dashboard': typeof LandlordLandlordDashboardRoute
@@ -376,6 +383,7 @@ export interface FileRoutesByTo {
   '/admin/listings': typeof AdminAdminListingsRoute
   '/admin/messages': typeof AdminAdminMessagesRoute
   '/admin/payments': typeof AdminAdminPaymentsRoute
+  '/admin/settings': typeof AdminAdminSettingsRoute
   '/admin/users': typeof AdminAdminUsersRoute
   '/landlord/appointments': typeof LandlordLandlordAppointmentsRoute
   '/landlord/dashboard': typeof LandlordLandlordDashboardRoute
@@ -427,6 +435,7 @@ export interface FileRoutesById {
   '/_admin/admin/listings': typeof AdminAdminListingsRoute
   '/_admin/admin/messages': typeof AdminAdminMessagesRoute
   '/_admin/admin/payments': typeof AdminAdminPaymentsRoute
+  '/_admin/admin/settings': typeof AdminAdminSettingsRoute
   '/_admin/admin/users': typeof AdminAdminUsersRoute
   '/_landlord/landlord/appointments': typeof LandlordLandlordAppointmentsRoute
   '/_landlord/landlord/dashboard': typeof LandlordLandlordDashboardRoute
@@ -475,6 +484,7 @@ export interface FileRouteTypes {
     | '/admin/listings'
     | '/admin/messages'
     | '/admin/payments'
+    | '/admin/settings'
     | '/admin/users'
     | '/landlord/appointments'
     | '/landlord/dashboard'
@@ -521,6 +531,7 @@ export interface FileRouteTypes {
     | '/admin/listings'
     | '/admin/messages'
     | '/admin/payments'
+    | '/admin/settings'
     | '/admin/users'
     | '/landlord/appointments'
     | '/landlord/dashboard'
@@ -571,6 +582,7 @@ export interface FileRouteTypes {
     | '/_admin/admin/listings'
     | '/_admin/admin/messages'
     | '/_admin/admin/payments'
+    | '/_admin/admin/settings'
     | '/_admin/admin/users'
     | '/_landlord/landlord/appointments'
     | '/_landlord/landlord/dashboard'
@@ -895,6 +907,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminAdminUsersRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/_admin/admin/settings': {
+      id: '/_admin/admin/settings'
+      path: '/admin/settings'
+      fullPath: '/admin/settings'
+      preLoaderRoute: typeof AdminAdminSettingsRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/_admin/admin/payments': {
       id: '/_admin/admin/payments'
       path: '/admin/payments'
@@ -966,6 +985,7 @@ interface AdminRouteChildren {
   AdminAdminListingsRoute: typeof AdminAdminListingsRoute
   AdminAdminMessagesRoute: typeof AdminAdminMessagesRoute
   AdminAdminPaymentsRoute: typeof AdminAdminPaymentsRoute
+  AdminAdminSettingsRoute: typeof AdminAdminSettingsRoute
   AdminAdminUsersRoute: typeof AdminAdminUsersRoute
   AdminAdminVerificationsLandlordsRoute: typeof AdminAdminVerificationsLandlordsRoute
   AdminAdminVerificationsStudentsRoute: typeof AdminAdminVerificationsStudentsRoute
@@ -976,6 +996,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminAdminListingsRoute: AdminAdminListingsRoute,
   AdminAdminMessagesRoute: AdminAdminMessagesRoute,
   AdminAdminPaymentsRoute: AdminAdminPaymentsRoute,
+  AdminAdminSettingsRoute: AdminAdminSettingsRoute,
   AdminAdminUsersRoute: AdminAdminUsersRoute,
   AdminAdminVerificationsLandlordsRoute: AdminAdminVerificationsLandlordsRoute,
   AdminAdminVerificationsStudentsRoute: AdminAdminVerificationsStudentsRoute,

@@ -1,8 +1,9 @@
+// Admin User Management — reads/writes directly from Supabase
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Users, Ban, ShieldCheck, Search } from "lucide-react";
-import { adminApi } from "@/api/admin.api";
+import { Loader2, Users, Ban, ShieldCheck, Search, AlertTriangle } from "lucide-react";
+import { getAdminUsers, adminBanUser, adminApproveUser } from "@/lib/supabaseAdmin";
 import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/_admin/admin/users")({
@@ -10,42 +11,52 @@ export const Route = createFileRoute("/_admin/admin/users")({
   component: AdminUsers,
 });
 
-function AdminUsers() {
-  const qc    = useQueryClient();
-  const [q,   setQ]   = useState("");
-  const [banId,      setBanId]      = useState<string | null>(null);
-  const [banReason,  setBanReason]  = useState("");
+const STATUS_COLORS: Record<string, string> = {
+  ACTIVE:   "text-emerald-700 bg-emerald-100",
+  PENDING:  "text-amber-700 bg-amber-100",
+  BANNED:   "text-red-700 bg-red-100",
+  REJECTED: "text-red-700 bg-red-100",
+};
 
-  const { data, isLoading, refetch } = useQuery({
-    queryKey: ["admin-users", q],
-    queryFn:  () => adminApi.getUsers({ q: q || undefined, limit: 50 }),
-    enabled:  true,
+function AdminUsers() {
+  const qc = useQueryClient();
+  const [q, setQ] = useState("");
+  const [banId, setBanId] = useState<string | null>(null);
+  const [banReason, setBanReason] = useState("");
+  const [debouncedQ, setDebouncedQ] = useState("");
+
+  // Debounce the search
+  const handleSearch = (val: string) => {
+    setQ(val);
+    clearTimeout((window as any).__userSearchTimer);
+    (window as any).__userSearchTimer = setTimeout(() => setDebouncedQ(val), 400);
+  };
+
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: ["admin-users", debouncedQ],
+    queryFn: () => getAdminUsers({ q: debouncedQ || undefined, limit: 100 }),
+    staleTime: 30_000,
   });
 
   const banMut = useMutation({
-    mutationFn: ({ id, reason }: { id: string; reason: string }) => adminApi.banUser(id, reason),
-    onSuccess:  () => { setBanId(null); setBanReason(""); refetch(); },
+    mutationFn: (id: string) => adminBanUser(id),
+    onSuccess: () => { setBanId(null); setBanReason(""); refetch(); },
   });
 
   const unbanMut = useMutation({
-    mutationFn: (id: string) => adminApi.unbanUser(id),
-    onSuccess:  () => refetch(),
+    mutationFn: (id: string) => adminApproveUser(id), // sets status back to ACTIVE
+    onSuccess: () => refetch(),
   });
 
   const users = (data?.data ?? []) as Record<string, unknown>[];
-
-  const STATUS_COLORS: Record<string, string> = {
-    ACTIVE:   "text-success bg-success/10",
-    PENDING:  "text-warning bg-warning/10",
-    BANNED:   "text-destructive bg-destructive/10",
-    REJECTED: "text-destructive bg-destructive/10",
-  };
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-xl font-bold tracking-tight">User Management</h1>
-        <p className="text-sm text-muted-foreground">Search, ban, or unban platform users.</p>
+        <p className="text-sm text-muted-foreground">
+          {data?.pagination?.total ?? 0} total users · Search, ban, or unban platform accounts.
+        </p>
       </div>
 
       {/* Search bar */}
@@ -54,13 +65,21 @@ function AdminUsers() {
         <input
           id="admin-user-search"
           type="search"
-          placeholder="Search by name or email..."
+          placeholder="Search by name or email…"
           value={q}
-          onChange={(e) => setQ(e.target.value)}
+          onChange={(e) => handleSearch(e.target.value)}
           className="w-full rounded-xl border border-input bg-background pl-9 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
           aria-label="Search users"
         />
       </div>
+
+      {/* Error banner */}
+      {error && (
+        <div className="flex items-center gap-3 p-4 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-sm">
+          <AlertTriangle className="h-4 w-4 shrink-0" />
+          <span>Could not load users: {(error as Error).message}</span>
+        </div>
+      )}
 
       {isLoading && (
         <div className="flex justify-center py-16" aria-busy="true">
@@ -68,10 +87,11 @@ function AdminUsers() {
         </div>
       )}
 
-      {!isLoading && users.length === 0 && (
+      {!isLoading && users.length === 0 && !error && (
         <div className="text-center py-16 text-muted-foreground">
           <Users className="h-10 w-10 mx-auto mb-3 opacity-40" aria-hidden="true" />
-          <p>No users found.</p>
+          <p className="font-medium">No users found</p>
+          {debouncedQ && <p className="text-xs mt-1">Try a different search term</p>}
         </div>
       )}
 
@@ -79,12 +99,21 @@ function AdminUsers() {
         {users.map((u) => {
           const userId = u.id as string;
           const status = (u.status as string) ?? "ACTIVE";
+          const name = (u.full_name as string) || "—";
+          const email = u.email as string;
+          const role = u.role as string;
+          const joined = u.created_at
+            ? new Date(u.created_at as string).toLocaleDateString("en-CM", { day: "numeric", month: "short", year: "numeric" })
+            : "—";
+
           return (
             <div key={userId} className="rounded-xl border border-border bg-card px-4 py-3.5 space-y-3">
               <div className="flex items-center justify-between gap-4 flex-wrap">
                 <div>
-                  <p className="font-semibold text-sm">{u.fullName as string}</p>
-                  <p className="text-xs text-muted-foreground">{u.email as string} &bull; <span className="capitalize">{u.role as string}</span></p>
+                  <p className="font-semibold text-sm text-foreground">{name}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {email} &bull; <span className="capitalize">{role}</span> &bull; Joined {joined}
+                  </p>
                 </div>
                 <span className={`text-xs font-medium px-2.5 py-0.5 rounded-full ${STATUS_COLORS[status] ?? "bg-muted text-muted-foreground"}`}>
                   {status}
@@ -96,7 +125,7 @@ function AdminUsers() {
                 <div className="rounded-xl bg-muted p-3 space-y-2">
                   <input
                     type="text"
-                    placeholder="Reason for ban..."
+                    placeholder="Reason for ban…"
                     value={banReason}
                     onChange={(e) => setBanReason(e.target.value)}
                     className="w-full rounded-xl border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
@@ -108,7 +137,7 @@ function AdminUsers() {
                       size="sm"
                       variant="destructive"
                       disabled={!banReason.trim() || banMut.isPending}
-                      onClick={() => banMut.mutate({ id: userId, reason: banReason })}
+                      onClick={() => banMut.mutate(userId)}
                       className="rounded-xl"
                     >
                       {banMut.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : "Confirm ban"}
@@ -123,10 +152,10 @@ function AdminUsers() {
                     <Button
                       size="sm"
                       variant="outline"
-                      className="rounded-xl h-8 gap-1.5 text-xs text-success border-success/30"
+                      className="rounded-xl h-8 gap-1.5 text-xs text-emerald-700 border-emerald-300 hover:bg-emerald-50"
                       onClick={() => unbanMut.mutate(userId)}
                       disabled={unbanMut.isPending}
-                      aria-label={`Unban ${u.fullName}`}
+                      aria-label={`Unban ${name}`}
                     >
                       <ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" />
                       Unban
@@ -136,9 +165,9 @@ function AdminUsers() {
                       <Button
                         size="sm"
                         variant="outline"
-                        className="rounded-xl h-8 gap-1.5 text-xs text-destructive border-destructive/30"
+                        className="rounded-xl h-8 gap-1.5 text-xs text-destructive border-destructive/30 hover:bg-destructive/10"
                         onClick={() => { setBanId(userId); setBanReason(""); }}
-                        aria-label={`Ban ${u.fullName}`}
+                        aria-label={`Ban ${name}`}
                       >
                         <Ban className="h-3.5 w-3.5" aria-hidden="true" />
                         Ban

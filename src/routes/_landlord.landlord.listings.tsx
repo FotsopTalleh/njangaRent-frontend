@@ -1,9 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Plus, Building2, Eye, Loader2, Trash2, CheckCircle2, AlertCircle } from "lucide-react";
-import { listingsApi } from "@/api/listings.api";
+import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useAuthStore } from "@/store/authStore";
 import type { Listing } from "@/api/listings.api";
 
 export const Route = createFileRoute("/_landlord/landlord/listings")({
@@ -26,18 +27,32 @@ function formatXAF(n: number) {
 
 function LandlordListings() {
   const qc = useQueryClient();
+  const user = useAuthStore((s) => s.user);
 
   const { data, isLoading } = useQuery({
-    queryKey: ["my-listings"],
-    queryFn:  () => listingsApi.getMyListings(),
+    queryKey: ["my-listings", user?.id],
+    queryFn: async () => {
+      if (!user?.id) return [];
+      const { data, error } = await supabase
+        .from("listings")
+        .select("*")
+        .eq("landlord_id", user.id)
+        .order("created_at", { ascending: false });
+      if (error) throw new Error(error.message);
+      return data ?? [];
+    },
+    enabled: !!user?.id,
   });
 
   const deactivate = useMutation({
-    mutationFn: (id: string) => listingsApi.deactivate(id),
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("listings").update({ status: "deactivated" }).eq("id", id);
+      if (error) throw new Error(error.message);
+    },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["my-listings"] }),
   });
 
-  const listings: Listing[] = (data as { data: Listing[] } | undefined)?.data ?? [];
+  const listings: any[] = (data as any[]) ?? [];
   const activeCount = listings.filter((l: Listing) => l.status === "active").length;
 
   return (
