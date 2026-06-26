@@ -1,185 +1,186 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+// Student Appointments — Supabase-backed
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Plus, Calendar } from "lucide-react";
-import { appointmentsApi } from "@/api/appointments.api";
-import { listingsApi } from "@/api/listings.api";
-import { AppointmentCard } from "@/components/AppointmentCard";
+import { Loader2, Calendar, AlertTriangle, MapPin, Clock, CheckCircle2, XCircle, Plus } from "lucide-react";
+import { supabase } from "@/lib/supabase";
+import { useAuthStore } from "@/store/authStore";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import type { AppointmentStatus } from "@/api/appointments.api";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_student/student/appointments")({
   head: () => ({ meta: [{ title: "My Appointments — NjangaRent" }] }),
   component: StudentAppointments,
 });
 
-function StudentAppointments() {
-  const qc     = useQueryClient();
-  const [statusFilter, setStatusFilter] = useState<AppointmentStatus | "all">("all");
-  const [showBookForm, setShowBookForm] = useState(false);
-  const [bookListingId, setBookListingId] = useState("");
-  const [bookDate, setBookDate]     = useState("");
-  const [bookSlot, setBookSlot]     = useState("morning");
-  const [bookNote, setBookNote]     = useState("");
-  const [bookError, setBookError]   = useState<string | null>(null);
+const STATUS_CONFIG: Record<string, { label: string; color: string; icon: typeof Calendar }> = {
+  pending:   { label: "Pending",   color: "bg-amber-100 text-amber-700",   icon: Clock },
+  confirmed: { label: "Confirmed", color: "bg-emerald-100 text-emerald-700", icon: CheckCircle2 },
+  cancelled: { label: "Cancelled", color: "bg-red-100 text-red-700",       icon: XCircle },
+  completed: { label: "Completed", color: "bg-slate-100 text-slate-600",   icon: CheckCircle2 },
+};
 
-  const { data, isLoading } = useQuery({
-    queryKey: ["appointments", "student", statusFilter],
-    queryFn:  () => appointmentsApi.list(statusFilter !== "all" ? { status: statusFilter } : undefined),
+function StudentAppointments() {
+  const qc = useQueryClient();
+  const user = useAuthStore((s) => s.user);
+  const [filter, setFilter] = useState<"all" | "pending" | "confirmed" | "cancelled">("all");
+
+  const { data = [], isLoading, error } = useQuery({
+    queryKey: ["student-appointments-full", user?.id, filter],
+    queryFn: async () => {
+      if (!user?.id) return [];
+      let query = supabase
+        .from("appointments")
+        .select("*, listings(id, title, display_address, exterior_images)")
+        .eq("student_id", user.id)
+        .order("scheduled_date", { ascending: true });
+      if (filter !== "all") query = query.eq("status", filter);
+      const { data, error } = await query;
+      if (error) throw new Error(error.message);
+      return data ?? [];
+    },
+    enabled: !!user?.id,
   });
 
   const cancelMut = useMutation({
-    mutationFn: (id: string) => appointmentsApi.cancel(id),
-    onSuccess:  () => qc.invalidateQueries({ queryKey: ["appointments", "student"] }),
-  });
-
-  const bookMut = useMutation({
-    mutationFn: () => appointmentsApi.create({
-      listingId:    bookListingId,
-      proposedDate: bookDate,
-      proposedSlot: bookSlot as "morning" | "afternoon" | "evening",
-      studentNote:  bookNote,
-    }),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["appointments", "student"] });
-      setShowBookForm(false);
-      setBookListingId(""); setBookDate(""); setBookSlot("morning"); setBookNote("");
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("appointments").update({ status: "cancelled" }).eq("id", id);
+      if (error) throw new Error(error.message);
     },
-    onError: (err: { message?: string }) => setBookError(err?.message ?? "Booking failed."),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["student-appointments-full"] }),
   });
 
-  const appointments = data?.data ?? [];
-
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  const tomorrowStr = tomorrow.toISOString().split("T")[0];
+  const filters = [
+    { key: "all", label: "All" },
+    { key: "pending", label: "Pending" },
+    { key: "confirmed", label: "Confirmed" },
+    { key: "cancelled", label: "Cancelled" },
+  ] as const;
 
   return (
-    <div className="space-y-6 max-w-2xl">
-      <div className="flex items-center justify-between gap-4">
+    <div className="space-y-6 max-w-3xl">
+      <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold tracking-tight">My Appointments</h1>
-          <p className="text-sm text-muted-foreground">Manage your property viewings.</p>
+          <p className="text-sm text-muted-foreground mt-1">Your scheduled property viewings.</p>
         </div>
-        <Button size="sm" onClick={() => setShowBookForm((v) => !v)} className="gap-1.5 rounded-xl">
-          <Plus className="h-4 w-4" aria-hidden="true" />
-          Book viewing
+        <Button asChild variant="default" size="sm" className="rounded-xl gap-2">
+          <Link to="/explore">
+            <Plus className="h-4 w-4" /> Find listings
+          </Link>
         </Button>
       </div>
 
-      {/* Book form */}
-      {showBookForm && (
-        <div className="rounded-2xl border border-border bg-card p-5 space-y-4">
-          <h2 className="font-semibold text-sm">New viewing request</h2>
-
-          <div className="space-y-1.5">
-            <label htmlFor="appt-listing" className="text-sm font-medium">Listing ID</label>
-            <input
-              id="appt-listing"
-              className="w-full rounded-xl border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-              placeholder="Paste the listing ID from the listing page"
-              value={bookListingId}
-              onChange={(e) => setBookListingId(e.target.value)}
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <label htmlFor="appt-date" className="text-sm font-medium">Date</label>
-              <input
-                id="appt-date"
-                type="date"
-                min={tomorrowStr}
-                className="w-full rounded-xl border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                value={bookDate}
-                onChange={(e) => setBookDate(e.target.value)}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <label htmlFor="appt-slot" className="text-sm font-medium">Time slot</label>
-              <Select value={bookSlot} onValueChange={setBookSlot}>
-                <SelectTrigger id="appt-slot" className="rounded-xl">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="morning">Morning (8am–12pm)</SelectItem>
-                  <SelectItem value="afternoon">Afternoon (12pm–4pm)</SelectItem>
-                  <SelectItem value="evening">Evening (4pm–7pm)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <label htmlFor="appt-note" className="text-sm font-medium">Note to landlord (optional)</label>
-            <textarea
-              id="appt-note"
-              rows={2}
-              className="w-full rounded-xl border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring resize-none"
-              placeholder="Any questions or special requirements?"
-              value={bookNote}
-              onChange={(e) => setBookNote(e.target.value)}
-            />
-          </div>
-
-          {bookError && (
-            <p role="alert" className="text-sm text-destructive">{bookError}</p>
-          )}
-
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={() => setShowBookForm(false)} className="flex-1 rounded-xl">
-              Cancel
-            </Button>
-            <Button
-              disabled={!bookListingId || !bookDate || bookMut.isPending}
-              onClick={() => bookMut.mutate()}
-              className="flex-1 rounded-xl"
-            >
-              {bookMut.isPending ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : "Request viewing"}
-            </Button>
-          </div>
-        </div>
-      )}
-
-      {/* Status filter */}
-      <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as AppointmentStatus | "all")}>
-        <SelectTrigger id="appt-filter" className="w-44 rounded-xl" aria-label="Filter appointments by status">
-          <SelectValue placeholder="All statuses" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">All statuses</SelectItem>
-          <SelectItem value="pending">Pending</SelectItem>
-          <SelectItem value="confirmed">Confirmed</SelectItem>
-          <SelectItem value="rescheduled">Rescheduled</SelectItem>
-          <SelectItem value="declined">Declined</SelectItem>
-          <SelectItem value="completed">Completed</SelectItem>
-          <SelectItem value="cancelled">Cancelled</SelectItem>
-        </SelectContent>
-      </Select>
-
-      {isLoading && (
-        <div className="flex items-center justify-center py-12" aria-busy="true">
-          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" aria-hidden="true" />
-        </div>
-      )}
-
-      {!isLoading && appointments.length === 0 && (
-        <div className="text-center py-12 text-muted-foreground">
-          <Calendar className="h-10 w-10 mx-auto mb-3 opacity-40" aria-hidden="true" />
-          <p>No appointments yet. Book your first viewing above.</p>
-        </div>
-      )}
-
-      <div className="space-y-3">
-        {appointments.map((appt) => (
-          <AppointmentCard
-            key={appt.id}
-            appointment={appt}
-            role="student"
-            onCancel={(id) => cancelMut.mutate(id)}
-          />
+      {/* Filters */}
+      <div className="flex gap-2 flex-wrap">
+        {filters.map((f) => (
+          <button
+            key={f.key}
+            onClick={() => setFilter(f.key)}
+            className={cn(
+              "px-4 py-1.5 rounded-full text-sm font-medium border transition-colors",
+              filter === f.key
+                ? "bg-primary text-primary-foreground border-primary"
+                : "border-border text-muted-foreground hover:border-primary/40",
+            )}
+          >
+            {f.label}
+          </button>
         ))}
+      </div>
+
+      {/* Error */}
+      {error && (
+        <div className="flex items-center gap-3 p-4 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-sm">
+          <AlertTriangle className="h-4 w-4 shrink-0" />
+          <span>Could not load appointments: {(error as Error).message}</span>
+        </div>
+      )}
+
+      {/* Loading */}
+      {isLoading && (
+        <div className="flex justify-center py-16" aria-busy="true">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+      )}
+
+      {/* Empty state */}
+      {!isLoading && data.length === 0 && !error && (
+        <div className="text-center py-16 text-muted-foreground">
+          <Calendar className="h-10 w-10 mx-auto mb-3 opacity-40" />
+          <p className="font-medium">No appointments</p>
+          <p className="text-xs mt-1">Book a viewing from any listing page.</p>
+          <Button asChild variant="default" size="sm" className="mt-4 rounded-xl">
+            <Link to="/explore">Browse Listings</Link>
+          </Button>
+        </div>
+      )}
+
+      {/* Appointment cards */}
+      <div className="space-y-4">
+        {(data as any[]).map((a) => {
+          const cfg = STATUS_CONFIG[a.status] ?? STATUS_CONFIG.pending;
+          const Icon = cfg.icon;
+          const listing = a.listings as any;
+          const thumb = listing?.exterior_images?.[0];
+          const dateStr = a.scheduled_date
+            ? new Date(a.scheduled_date).toLocaleDateString("en-CM", { weekday: "long", day: "numeric", month: "long", year: "numeric" })
+            : "Date TBD";
+          return (
+            <div key={a.id} className="rounded-2xl border border-border bg-card overflow-hidden flex gap-0">
+              {/* Thumbnail */}
+              {thumb && (
+                <div className="w-24 shrink-0 bg-muted">
+                  <img src={thumb} alt="listing" className="w-full h-full object-cover" />
+                </div>
+              )}
+              <div className="p-4 flex-1 min-w-0">
+                <div className="flex items-start justify-between gap-2 flex-wrap">
+                  <div>
+                    <p className="font-semibold text-sm text-foreground line-clamp-1">
+                      {listing?.title ?? "Property Viewing"}
+                    </p>
+                    {listing?.display_address && (
+                      <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                        <MapPin className="h-3 w-3" /> {listing.display_address}
+                      </p>
+                    )}
+                    <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                      <Calendar className="h-3 w-3" /> {dateStr}
+                    </p>
+                    {a.slot && (
+                      <p className="text-xs text-muted-foreground capitalize mt-0.5">
+                        Time slot: {a.slot}
+                      </p>
+                    )}
+                  </div>
+                  <span className={cn("text-xs font-medium px-2.5 py-1 rounded-full shrink-0 flex items-center gap-1", cfg.color)}>
+                    <Icon className="h-3 w-3" /> {cfg.label}
+                  </span>
+                </div>
+
+                {a.status === "pending" && (
+                  <div className="mt-3 flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="rounded-xl h-8 text-xs text-destructive border-destructive/30"
+                      onClick={() => cancelMut.mutate(a.id)}
+                      disabled={cancelMut.isPending}
+                    >
+                      {cancelMut.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Cancel"}
+                    </Button>
+                    {listing?.id && (
+                      <Button asChild variant="ghost" size="sm" className="rounded-xl h-8 text-xs">
+                        <Link to="/listing/$id" params={{ id: listing.id }}>View Listing →</Link>
+                      </Button>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
