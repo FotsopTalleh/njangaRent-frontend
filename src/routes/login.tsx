@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation } from "@tanstack/react-query";
-import { Eye, EyeOff, Loader2, AlertCircle } from "lucide-react";
+import { Eye, EyeOff, Loader2, AlertCircle, ShieldAlert, RefreshCw } from "lucide-react";
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { loginSchema, type LoginInput } from "@/lib/schemas/auth.schemas";
 import { AuthShell } from "@/components/layout/AuthShell";
-import { useSignIn, useUser, useAuth } from "@clerk/clerk-react";
+import { useSignIn, useUser } from "@clerk/clerk-react";
 import { cn } from "@/lib/utils";
 import { useAuthStore, dashboardForRole } from "@/store/authStore";
 
@@ -24,11 +24,55 @@ export const Route = createFileRoute("/login")({
   component: LoginPage,
 });
 
+/** Translate Clerk error codes/statuses into user-friendly messages */
+function clerkErrorMessage(err: any): { message: string; isBotBlock: boolean; isPwned: boolean } {
+  // Clerk throws ClerkAPIResponseError with errors array
+  const errors: any[] = err?.errors ?? [];
+  const firstCode: string = errors[0]?.code ?? "";
+  const firstMsg: string = errors[0]?.longMessage ?? errors[0]?.message ?? "";
+
+  // Bot / CAPTCHA block
+  if (
+    firstCode === "form_identifier_not_found" && firstMsg.includes("bot") ||
+    firstCode === "captcha_invalid" ||
+    firstCode === "captcha_not_found" ||
+    (err as any)?.status === "needs_client_trust" ||
+    firstMsg.toLowerCase().includes("bot protection")
+  ) {
+    return { message: "Sign-in blocked by bot protection.", isBotBlock: true, isPwned: false };
+  }
+
+  // Password in breach
+  if (firstCode === "form_password_pwned" || firstMsg.toLowerCase().includes("pwned") || firstMsg.toLowerCase().includes("data breach")) {
+    return {
+      message: "This password was found in a known data breach. Please reset your password to continue.",
+      isBotBlock: false,
+      isPwned: true,
+    };
+  }
+
+  // Wrong password / user not found
+  if (firstCode === "form_password_incorrect") return { message: "Incorrect password. Please try again.", isBotBlock: false, isPwned: false };
+  if (firstCode === "form_identifier_not_found") return { message: "No account found with that email.", isBotBlock: false, isPwned: false };
+  if (firstCode === "form_param_format_invalid") return { message: "Please enter a valid email address.", isBotBlock: false, isPwned: false };
+
+  // Too many attempts
+  if (firstCode === "too_many_requests" || firstCode === "lockout") {
+    return { message: "Too many attempts. Please wait a few minutes and try again.", isBotBlock: false, isPwned: false };
+  }
+
+  // Fallback to Clerk's own message or generic
+  return {
+    message: firstMsg || (err as any)?.message || "Sign in failed. Please try again.",
+    isBotBlock: false,
+    isPwned: false,
+  };
+}
+
 function LoginPage() {
   const navigate = useNavigate();
   const { isLoaded, signIn, setActive } = useSignIn();
   const { isLoaded: userLoaded, isSignedIn } = useUser();
-  const { userId } = useAuth();
   const storedUser = useAuthStore((s) => s.user);
   const [showPw, setShowPw] = useState(false);
 
@@ -46,65 +90,61 @@ function LoginPage() {
 
   const login = useMutation({
     mutationFn: async (v: LoginInput) => {
-      if (!isLoaded) throw new Error("Authentication service is loading...");
+      if (!isLoaded) throw new Error("Authentication service is loading…");
 
-      const result = await signIn.create({
-        identifier: v.email,
-        password: v.password,
-      });
+      let result: any;
+      try {
+        result = await signIn!.create({
+          identifier: v.email,
+          password: v.password,
+        });
+      } catch (err: any) {
+        // Re-throw with friendly message
+        const parsed = clerkErrorMessage(err);
+        const friendly = Object.assign(new Error(parsed.message), {
+          isBotBlock: parsed.isBotBlock,
+          isPwned: parsed.isPwned,
+        });
+        throw friendly;
+      }
 
       if (result.status === "complete") {
-        await setActive({ session: result.createdSessionId });
+        await setActive!({ session: result.createdSessionId });
+        // AuthSync in __root.tsx will detect the new session and navigate to the dashboard.
+        // We do NOT navigate here to avoid a race condition.
         return result;
       }
 
-      // Handle email-code verification (some Clerk configurations require it)
       if (result.status === "needs_first_factor") {
-        const emailFactor = result.supportedFirstFactors?.find(
-          (f: any) => f.strategy === "email_code"
-        );
+        const emailFactor = result.supportedFirstFactors?.find((f: any) => f.strategy === "email_code");
         if (emailFactor) {
-          await signIn.prepareFirstFactor({
-            strategy: "email_code",
-            emailAddressId: (emailFactor as any).emailAddressId,
-          });
-          throw new Error("A verification code was sent to your email. Please check your inbox and try again.");
+          await signIn!.prepareFirstFactor({ strategy: "email_code", emailAddressId: emailFactor.emailAddressId });
+          throw new Error("A verification code was sent to your email. Please check your inbox.");
         }
-        // Phone OTP fallback
-        const phoneFactor = result.supportedFirstFactors?.find(
-          (f: any) => f.strategy === "phone_code"
-        );
-        if (phoneFactor) {
-          throw new Error("A verification code was sent to your phone. Please check your messages.");
-        }
+        throw new Error("Additional verification required. Please use Google sign-in.");
       }
 
-      // MFA / 2FA step
       if (result.status === "needs_second_factor") {
-        throw new Error("Two-factor authentication is required. Please use the Clerk portal to sign in.");
+        throw new Error("Two-factor authentication required. Please use the Clerk portal to sign in.");
       }
 
-      // Password reset required
       if (result.status === "needs_new_password") {
-        throw new Error("Your password has expired. Please reset your password.");
+        throw new Error("Your password has expired. Please reset it.");
       }
 
-      // Bot protection / CAPTCHA required (happens on custom forms if Bot Protection is enabled)
-      if (result.status === "needs_client_trust" as any) {
-        throw new Error("Login blocked by Bot Protection. Please disable Bot Protection in your Clerk Dashboard or use the official Clerk component.");
+      if ((result.status as string) === "needs_client_trust") {
+        const err = new Error("Sign-in blocked by bot protection.") as any;
+        err.isBotBlock = true;
+        throw err;
       }
 
-      // Unknown — show the raw status for debugging
-      throw new Error(`Sign-in could not be completed (status: ${result.status}). Please try again or contact support.`);
-    },
-    onSuccess: () => {
-      // Navigate directly to the role-based dashboard — no round-trip through /
-      const role = (signIn?.userData as any)?.unsafeMetadata?.role ||
-                   storedUser?.role ||
-                   "student";
-      navigate({ to: dashboardForRole(role as any), replace: true });
+      throw new Error(`Sign-in could not be completed (status: ${result.status}). Please try again.`);
     },
   });
+
+  const errorInfo = login.error as any;
+  const isBotBlock = errorInfo?.isBotBlock === true;
+  const isPwned = errorInfo?.isPwned === true;
 
   return (
     <AuthShell
@@ -134,10 +174,10 @@ function LoginPage() {
             {...form.register("email")}
           />
           {form.formState.errors.email && (
-             <p className="flex items-center gap-1 text-xs text-destructive">
-               <AlertCircle className="h-3 w-3 shrink-0" />
-               {form.formState.errors.email.message}
-             </p>
+            <p className="flex items-center gap-1 text-xs text-destructive">
+              <AlertCircle className="h-3 w-3 shrink-0" />
+              {form.formState.errors.email.message}
+            </p>
           )}
         </div>
 
@@ -177,20 +217,60 @@ function LoginPage() {
           )}
         </div>
 
+        {/* Error banner */}
         {login.isError && (
           <motion.div
             initial={{ opacity: 0, y: -4 }}
             animate={{ opacity: 1, y: 0 }}
-            className="flex items-start gap-2 text-sm text-destructive bg-destructive/10 rounded-xl px-3 py-2"
+            className={cn(
+              "rounded-xl px-3 py-3 text-sm",
+              isBotBlock || isPwned
+                ? "bg-amber-50 border border-amber-200 text-amber-800 dark:bg-amber-950/30 dark:border-amber-800 dark:text-amber-300"
+                : "bg-destructive/10 text-destructive"
+            )}
           >
-            <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
-            <span>{(login.error as { message?: string })?.message || "Sign in failed"}</span>
+            {isBotBlock ? (
+              <div className="flex items-start gap-2">
+                <ShieldAlert className="h-4 w-4 mt-0.5 shrink-0" />
+                <div>
+                  <p className="font-semibold">Sign-in blocked by bot protection</p>
+                  <p className="text-xs mt-0.5 opacity-80">
+                    Use <strong>Google</strong> or <strong>Apple</strong> sign-in below — they bypass this restriction.
+                  </p>
+                </div>
+              </div>
+            ) : isPwned ? (
+              <div className="flex items-start gap-2">
+                <ShieldAlert className="h-4 w-4 mt-0.5 shrink-0" />
+                <div>
+                  <p className="font-semibold">Password found in a data breach</p>
+                  <p className="text-xs mt-0.5 opacity-80">
+                    For your security, please{" "}
+                    <Link to="/forgot-password" className="underline font-medium">
+                      reset your password
+                    </Link>{" "}
+                    before signing in.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-start gap-2">
+                <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+                <span>{(login.error as { message?: string })?.message || "Sign in failed"}</span>
+              </div>
+            )}
           </motion.div>
         )}
 
         <Button type="submit" disabled={login.isPending || !isLoaded} className="w-full h-11 rounded-xl">
-          {login.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-          Sign in
+          {login.isPending ? (
+            <>
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              Signing in…
+            </>
+          ) : (
+            "Sign in"
+          )}
         </Button>
 
         <div className="relative my-4">

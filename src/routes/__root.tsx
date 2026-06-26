@@ -129,12 +129,22 @@ function AuthSync() {
       setUser({ id: user.id, email, name, role, status: "ACTIVE", avatarUrl: user.imageUrl });
       setSessionActive(true);
 
-      // On first sync after login: redirect away from public pages + sync to backend DB
       if (!hasSynced) {
         setHasSynced(true);
 
-        // Sync user to backend DB (non-blocking, best-effort) — fires once per session
+        // Redirect away from public pages IMMEDIATELY (don't block on backend sync)
+        const currentPath = router.state.location.pathname;
+        const publicPaths = ["/", "/login", "/signup", "/sso-callback", "/forgot-password"];
+        if (publicPaths.includes(currentPath)) {
+          const dest = role === "landlord" ? "/landlord/dashboard"
+                     : role === "admin"    ? "/admin/dashboard"
+                     : "/student/dashboard";
+          router.navigate({ to: dest, replace: true });
+        }
+
+        // Sync user to backend DB (non-blocking, fire-and-forget)
         getToken().then(async (token) => {
+          if (!token) return;
           try {
             await fetch("/api/auth/sync", {
               method: "POST",
@@ -142,15 +152,6 @@ function AuthSync() {
             });
           } catch (_) { /* non-fatal */ }
         });
-
-        const currentPath = router.state.location.pathname;
-        const publicPaths = ["/", "/login", "/signup", "/sso-callback", "/forgot-password"];
-        if (publicPaths.includes(currentPath)) {
-          const dest = role === "landlord" ? "/landlord/dashboard"
-                     : role === "admin"    ? "/admin/dashboard"
-                     : "/student/dashboard";
-          router.navigate({ to: dest });
-        }
       }
     } else if (!isSignedIn && hasSynced) {
       // ── Session ended (signed out or token expired) ──────────────────────
