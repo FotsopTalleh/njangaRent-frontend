@@ -1,216 +1,153 @@
+// Landlord Notifications — Supabase-backed (notifications table)
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Bell, BellOff, CheckCheck, Loader2 } from "lucide-react";
-import { useEffect } from "react";
-import { toast } from "sonner";
-
+import { Bell, BellOff, CheckCheck, Loader2, AlertTriangle } from "lucide-react";
+import { supabase } from "@/lib/supabase";
+import { useAuthStore } from "@/store/authStore";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { notificationsApi } from "@/api";
-import type { AppNotification } from "@/api";
-import { useNotificationStore } from "@/store/notificationStore";
-import { formatDate } from "@/utils/format";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_landlord/landlord/notifications")({
-  head: () => ({ meta: [{ title: "Notifications — MyTenant" }] }),
+  head: () => ({ meta: [{ title: "Notifications — NjangaRent" }] }),
   component: NotificationsPage,
 });
 
-// ── Icon / colour per notification type ──────────────────────────────────────
-
 const TYPE_CONFIG: Record<string, { label: string; color: string }> = {
-  PAYMENT_SUBMITTED: { label: "Payment submitted", color: "bg-warning/15 text-warning" },
-  PAYMENT_APPROVED:  { label: "Payment approved",  color: "bg-success/15 text-success"  },
-  PAYMENT_REJECTED:  { label: "Rejected",          color: "bg-destructive/15 text-destructive" },
-  RENT_REMINDER:     { label: "Rent reminder",     color: "bg-primary/15 text-primary"  },
+  appointment_confirmed: { label: "Visit confirmed",   color: "bg-emerald-100 text-emerald-700" },
+  appointment_pending:   { label: "New visit request", color: "bg-amber-100 text-amber-700"   },
+  payment:               { label: "Payment",           color: "bg-blue-100 text-blue-700"     },
+  listing_approved:      { label: "Listing approved",  color: "bg-emerald-100 text-emerald-700" },
+  listing_flagged:       { label: "Listing flagged",   color: "bg-red-100 text-red-700"       },
+  general:               { label: "Notice",            color: "bg-muted text-muted-foreground"  },
 };
 
-function getConfig(type: string) {
-  return TYPE_CONFIG[type] ?? { label: type, color: "bg-muted text-muted-foreground" };
-}
-
-// ── Page component ────────────────────────────────────────────────────────────
-
 function NotificationsPage() {
-  const qc         = useQueryClient();
-  const setItems   = useNotificationStore((s) => s.setItems);
-  const markRead   = useNotificationStore((s) => s.markRead);
-  const markAllRead = useNotificationStore((s) => s.markAllRead);
+  const qc = useQueryClient();
+  const user = useAuthStore((s) => s.user);
 
-  const notifsQ = useQuery({
-    queryKey: ["notifications"],
-    queryFn:  () => notificationsApi.list({ limit: 50 }),
-    staleTime: 30_000,
+  const { data = [], isLoading, error } = useQuery({
+    queryKey: ["notifications", user?.id],
+    queryFn: async () => {
+      if (!user?.id) return [];
+      const { data, error } = await supabase
+        .from("notifications")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(50);
+      if (error) throw new Error(error.message);
+      return data ?? [];
+    },
+    enabled: !!user?.id,
+    refetchInterval: 30_000,
   });
 
-  const notifications: AppNotification[] =
-    (notifsQ.data as { data?: AppNotification[] } | undefined)?.data ?? [];
+  const markAllRead = useMutation({
+    mutationFn: async () => {
+      if (!user?.id) return;
+      const { error } = await supabase
+        .from("notifications")
+        .update({ read: true })
+        .eq("user_id", user.id)
+        .eq("read", false);
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["notifications"] }),
+  });
 
-  // Sync API results into the Zustand store (drives unread badge in sidebar)
-  useEffect(() => {
-    if (notifications.length > 0) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      setItems(notifications as any);
-    }
-  }, [notifications, setItems]);
+  const markRead = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("notifications").update({ read: true }).eq("id", id);
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["notifications"] }),
+  });
 
+  const notifications = data as any[];
   const unreadCount = notifications.filter((n) => !n.read).length;
 
-  // ── Mark single read ───────────────────────────────────────────────────────
-  const markReadMutation = useMutation({
-    mutationFn: (id: string) => notificationsApi.markRead(id),
-    onSuccess: (_data, id) => {
-      markRead(id);
-      qc.invalidateQueries({ queryKey: ["notifications"] });
-    },
-    onError: (e: { message?: string }) =>
-      toast.error(e?.message ?? "Failed to mark as read"),
-  });
-
-  // ── Mark all read ──────────────────────────────────────────────────────────
-  const markAllMutation = useMutation({
-    mutationFn: () => notificationsApi.markAllRead(),
-    onSuccess: () => {
-      markAllRead();
-      qc.invalidateQueries({ queryKey: ["notifications"] });
-      toast.success("All notifications marked as read.");
-    },
-    onError: (e: { message?: string }) =>
-      toast.error(e?.message ?? "Failed to mark all read"),
-  });
-
   return (
-    <div className="max-w-3xl mx-auto space-y-6">
-      {/* Header */}
+    <div className="space-y-6 max-w-2xl">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl lg:text-3xl font-bold tracking-tight">Notifications</h1>
-          <p className="text-muted-foreground text-sm mt-1">
-            Stay on top of approvals and tenant activity.
+          <h1 className="text-xl font-bold tracking-tight">Notifications</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            {unreadCount > 0 ? `${unreadCount} unread` : "All caught up"}
           </p>
         </div>
         {unreadCount > 0 && (
           <Button
-            variant="outline"
+            variant="ghost"
             size="sm"
             className="rounded-xl gap-2"
-            onClick={() => markAllMutation.mutate()}
-            disabled={markAllMutation.isPending}
+            onClick={() => markAllRead.mutate()}
+            disabled={markAllRead.isPending}
           >
-            {markAllMutation.isPending
-              ? <Loader2 className="h-4 w-4 animate-spin" />
-              : <CheckCheck className="h-4 w-4" />
-            }
-            Mark all read
+            <CheckCheck className="h-4 w-4" /> Mark all read
           </Button>
         )}
       </div>
 
-      {/* Unread summary */}
-      {unreadCount > 0 && (
-        <div className="rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 flex items-center gap-3">
-          <Bell className="h-4 w-4 text-primary shrink-0" />
-          <p className="text-sm text-foreground">
-            You have <span className="font-semibold text-primary">{unreadCount}</span> unread notification{unreadCount !== 1 ? "s" : ""}.
-          </p>
+      {error && (
+        <div className="flex items-center gap-3 p-4 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-sm">
+          <AlertTriangle className="h-4 w-4 shrink-0" />
+          <span>Could not load notifications: {(error as Error).message}</span>
         </div>
       )}
 
-      {/* List */}
-      {notifsQ.isLoading ? (
-        <div className="flex justify-center py-16">
+      {isLoading && (
+        <div className="flex items-center justify-center py-16">
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </div>
-      ) : notifications.length === 0 ? (
-        <EmptyState />
-      ) : (
-        <div className="rounded-2xl border border-border bg-card shadow-soft overflow-hidden">
-          <ul className="divide-y divide-border">
-            {notifications.map((n) => (
-              <NotificationRow
-                key={n.id}
-                notification={n}
-                isMarkingRead={markReadMutation.isPending && markReadMutation.variables === n.id}
-                onMarkRead={() => !n.read && markReadMutation.mutate(n.id)}
-              />
-            ))}
-          </ul>
+      )}
+
+      {!isLoading && notifications.length === 0 && !error && (
+        <div className="text-center py-16 text-muted-foreground">
+          <BellOff className="h-10 w-10 mx-auto mb-3 opacity-40" />
+          <p className="font-medium">No notifications yet</p>
+          <p className="text-xs mt-1">You'll be notified about viewing requests, payments, and listing updates.</p>
         </div>
       )}
-    </div>
-  );
-}
 
-// ── Sub-components ────────────────────────────────────────────────────────────
-
-function NotificationRow({
-  notification: n, isMarkingRead, onMarkRead,
-}: {
-  notification: AppNotification;
-  isMarkingRead: boolean;
-  onMarkRead: () => void;
-}) {
-  const cfg = getConfig(n.type);
-
-  return (
-    <li
-      className={`flex items-start gap-4 px-5 py-4 cursor-pointer transition-colors hover:bg-muted/30 ${
-        !n.read ? "bg-primary/4" : ""
-      }`}
-      onClick={onMarkRead}
-    >
-      {/* Type dot */}
-      <div className="mt-0.5 shrink-0">
-        <span
-          className={`inline-flex h-8 w-8 rounded-full items-center justify-center text-xs font-semibold ${cfg.color}`}
-        >
-          <Bell className="h-3.5 w-3.5" />
-        </span>
+      <div className="space-y-2">
+        {notifications.map((n) => {
+          const cfg = TYPE_CONFIG[n.type ?? "general"] ?? TYPE_CONFIG.general;
+          const date = n.created_at
+            ? new Date(n.created_at).toLocaleDateString("en-CM", { day: "numeric", month: "short", year: "numeric" })
+            : "—";
+          return (
+            <div
+              key={n.id}
+              onClick={() => !n.read && markRead.mutate(n.id)}
+              className={cn(
+                "rounded-xl border p-4 flex items-start gap-3 cursor-pointer transition-colors",
+                n.read
+                  ? "bg-card border-border opacity-70"
+                  : "bg-card border-primary/20 hover:border-primary/40",
+              )}
+            >
+              <div className={cn("h-8 w-8 rounded-full flex items-center justify-center shrink-0 mt-0.5", cfg.color)}>
+                <Bell className="h-4 w-4" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-start justify-between gap-2">
+                  <p className={cn("text-sm", n.read ? "text-muted-foreground" : "font-semibold text-foreground")}>
+                    {n.message ?? n.title ?? "New notification"}
+                  </p>
+                  {!n.read && <span className="h-2 w-2 rounded-full bg-primary shrink-0 mt-1.5" />}
+                </div>
+                <div className="flex items-center gap-2 mt-1">
+                  <Badge variant="secondary" className={cn("text-[10px] rounded-full border-0", cfg.color)}>
+                    {cfg.label}
+                  </Badge>
+                  <span className="text-xs text-muted-foreground">{date}</span>
+                </div>
+              </div>
+            </div>
+          );
+        })}
       </div>
-
-      {/* Content */}
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 flex-wrap">
-          <p className={`text-sm font-medium ${!n.read ? "text-foreground" : "text-foreground/80"}`}>
-            {n.title}
-          </p>
-          {!n.read && (
-            <span className="h-2 w-2 rounded-full bg-primary shrink-0" />
-          )}
-        </div>
-        <p className="text-sm text-muted-foreground mt-0.5 leading-relaxed">{n.body}</p>
-        <div className="flex items-center gap-3 mt-2">
-          <span className="text-xs text-muted-foreground">{formatDate(n.createdAt)}</span>
-          <Badge variant="outline" className={`rounded-full text-[10px] px-2 py-0 ${cfg.color} border-transparent`}>
-            {cfg.label}
-          </Badge>
-        </div>
-      </div>
-
-      {/* Mark read indicator */}
-      <div className="shrink-0 mt-1">
-        {isMarkingRead ? (
-          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-        ) : !n.read ? (
-          <div className="h-4 w-4 rounded-full border-2 border-primary" />
-        ) : (
-          <div className="h-4 w-4 rounded-full bg-muted" />
-        )}
-      </div>
-    </li>
-  );
-}
-
-function EmptyState() {
-  return (
-    <div className="flex flex-col items-center justify-center py-20 text-center rounded-2xl border border-dashed border-border">
-      <div className="h-14 w-14 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mb-4">
-        <BellOff className="h-7 w-7" />
-      </div>
-      <h3 className="font-semibold">All quiet</h3>
-      <p className="text-sm text-muted-foreground mt-1 max-w-xs">
-        No notifications yet. You'll be alerted when tenants submit payment proofs.
-      </p>
     </div>
   );
 }

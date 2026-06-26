@@ -53,6 +53,7 @@ import { Route as AdminAdminPaymentsRouteImport } from './routes/_admin.admin.pa
 import { Route as AdminAdminMessagesRouteImport } from './routes/_admin.admin.messages'
 import { Route as AdminAdminListingsRouteImport } from './routes/_admin.admin.listings'
 import { Route as AdminAdminDashboardRouteImport } from './routes/_admin.admin.dashboard'
+import { Route as StudentStudentListingsSavedRouteImport } from './routes/_student.student.listings.saved'
 import { Route as LandlordLandlordPaymentsReviewRouteImport } from './routes/_landlord.landlord.payments.review'
 import { Route as LandlordLandlordListingsCreateRouteImport } from './routes/_landlord.landlord.listings_.create'
 import { Route as AdminAdminVerificationsStudentsRouteImport } from './routes/_admin.admin.verifications.students'
@@ -284,6 +285,12 @@ const AdminAdminDashboardRoute = AdminAdminDashboardRouteImport.update({
   path: '/admin/dashboard',
   getParentRoute: () => AdminRoute,
 } as any)
+const StudentStudentListingsSavedRoute =
+  StudentStudentListingsSavedRouteImport.update({
+    id: '/student/listings/saved',
+    path: '/student/listings/saved',
+    getParentRoute: () => StudentRoute,
+  } as any)
 const LandlordLandlordPaymentsReviewRoute =
   LandlordLandlordPaymentsReviewRouteImport.update({
     id: '/landlord/payments/review',
@@ -360,6 +367,7 @@ export interface FileRoutesByFullPath {
   '/admin/verifications/students': typeof AdminAdminVerificationsStudentsRoute
   '/landlord/listings/create': typeof LandlordLandlordListingsCreateRoute
   '/landlord/payments/review': typeof LandlordLandlordPaymentsReviewRoute
+  '/student/listings/saved': typeof StudentStudentListingsSavedRoute
   '/landlord/listings/$id/edit': typeof LandlordLandlordListingsIdEditRoute
 }
 export interface FileRoutesByTo {
@@ -407,6 +415,7 @@ export interface FileRoutesByTo {
   '/admin/verifications/students': typeof AdminAdminVerificationsStudentsRoute
   '/landlord/listings/create': typeof LandlordLandlordListingsCreateRoute
   '/landlord/payments/review': typeof LandlordLandlordPaymentsReviewRoute
+  '/student/listings/saved': typeof StudentStudentListingsSavedRoute
   '/landlord/listings/$id/edit': typeof LandlordLandlordListingsIdEditRoute
 }
 export interface FileRoutesById {
@@ -459,6 +468,7 @@ export interface FileRoutesById {
   '/_admin/admin/verifications/students': typeof AdminAdminVerificationsStudentsRoute
   '/_landlord/landlord/listings_/create': typeof LandlordLandlordListingsCreateRoute
   '/_landlord/landlord/payments/review': typeof LandlordLandlordPaymentsReviewRoute
+  '/_student/student/listings/saved': typeof StudentStudentListingsSavedRoute
   '/_landlord/landlord/listings_/$id/edit': typeof LandlordLandlordListingsIdEditRoute
 }
 export interface FileRouteTypes {
@@ -508,6 +518,7 @@ export interface FileRouteTypes {
     | '/admin/verifications/students'
     | '/landlord/listings/create'
     | '/landlord/payments/review'
+    | '/student/listings/saved'
     | '/landlord/listings/$id/edit'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -555,6 +566,7 @@ export interface FileRouteTypes {
     | '/admin/verifications/students'
     | '/landlord/listings/create'
     | '/landlord/payments/review'
+    | '/student/listings/saved'
     | '/landlord/listings/$id/edit'
   id:
     | '__root__'
@@ -606,6 +618,7 @@ export interface FileRouteTypes {
     | '/_admin/admin/verifications/students'
     | '/_landlord/landlord/listings_/create'
     | '/_landlord/landlord/payments/review'
+    | '/_student/student/listings/saved'
     | '/_landlord/landlord/listings_/$id/edit'
   fileRoutesById: FileRoutesById
 }
@@ -942,6 +955,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminAdminDashboardRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/_student/student/listings/saved': {
+      id: '/_student/student/listings/saved'
+      path: '/student/listings/saved'
+      fullPath: '/student/listings/saved'
+      preLoaderRoute: typeof StudentStudentListingsSavedRouteImport
+      parentRoute: typeof StudentRoute
+    }
     '/_landlord/landlord/payments/review': {
       id: '/_landlord/landlord/payments/review'
       path: '/landlord/payments/review'
@@ -1041,6 +1061,7 @@ interface StudentRouteChildren {
   StudentStudentDashboardRoute: typeof StudentStudentDashboardRoute
   StudentStudentInboxRoute: typeof StudentStudentInboxRoute
   StudentStudentPaymentsRoute: typeof StudentStudentPaymentsRoute
+  StudentStudentListingsSavedRoute: typeof StudentStudentListingsSavedRoute
 }
 
 const StudentRouteChildren: StudentRouteChildren = {
@@ -1048,6 +1069,7 @@ const StudentRouteChildren: StudentRouteChildren = {
   StudentStudentDashboardRoute: StudentStudentDashboardRoute,
   StudentStudentInboxRoute: StudentStudentInboxRoute,
   StudentStudentPaymentsRoute: StudentStudentPaymentsRoute,
+  StudentStudentListingsSavedRoute: StudentStudentListingsSavedRoute,
 }
 
 const StudentRouteWithChildren =

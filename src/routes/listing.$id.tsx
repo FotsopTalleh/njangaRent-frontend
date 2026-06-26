@@ -127,7 +127,8 @@ function ListingDetail() {
   const startChat = useMutation({
     mutationFn: async () => {
       // landlordId is available in the normalised listing object
-      const landlordId = listing?.landlordId ?? listing?.landlord_id;
+      const l = listing as any;
+      const landlordId = l?.landlordId ?? l?.landlord_id;
       if (!landlordId) throw new Error("No landlord info available");
       const res = await fetch(`/api/messages/threads`, {
         method: "POST",
@@ -157,17 +158,19 @@ function ListingDetail() {
       mapRef.current = new maplibregl.Map({
         container: mapContainer.current!,
         style: "https://tiles.openfreemap.org/styles/liberty",
-        center: [listing.lng || 9.2403, listing.lat || 4.1527],
+        center: [(listing as any).lng || (listing as any).location?.lng || 9.2403, (listing as any).lat || (listing as any).location?.lat || 4.1527],
         zoom: 14,
         attributionControl: false,
       });
       mapRef.current.scrollZoom.disable();
       mapRef.current.dragPan.disable();
       mapRef.current.on("load", () => {
-        if (listing.lng && listing.lat) {
+        const lng = (listing as any).lng ?? (listing as any).location?.lng;
+        const lat = (listing as any).lat ?? (listing as any).location?.lat;
+        if (lng && lat) {
           const el = document.createElement("div");
           el.style.cssText = "width:24px;height:24px;background:#1B4332;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3)";
-          new maplibregl.Marker({ element: el }).setLngLat([listing.lng, listing.lat]).addTo(mapRef.current);
+          new maplibregl.Marker({ element: el }).setLngLat([lng, lat]).addTo(mapRef.current);
         }
       });
     });
@@ -208,7 +211,8 @@ function ListingDetail() {
     ? imagesArray
     : ["https://images.unsplash.com/photo-1522771731478-44eb10e5c8f4?auto=format&fit=crop&w=800"];
 
-  const landlordName = listing.landlord?.full_name || "Landlord";
+  const l = listing as any;
+  const landlordName = l.landlord?.full_name || "Landlord";
   const landlordInitial = landlordName.charAt(0).toUpperCase();
   const hasActiveLease = false;
 
@@ -272,7 +276,7 @@ function ListingDetail() {
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
           <h1 style={{ fontSize: 20, fontWeight: 700, color: c.text, margin: 0, lineHeight: 1.3, flex: 1 }}>
             {listing.title}
-            {listing.isVerified || listing.verified && <ShieldCheck size={16} color={c.amber} style={{ display: "inline", marginLeft: 6 }} />}
+            {(l.isVerified || l.verified) && <ShieldCheck size={16} color={c.amber} style={{ display: "inline", marginLeft: 6 }} />}
           </h1>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 6 }}>
@@ -310,7 +314,7 @@ function ListingDetail() {
         <div style={{ flex: 1, minWidth: 0 }}>
           <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: c.text, display: "flex", alignItems: "center", gap: 6 }}>
             {landlordName}
-            {listing.landlord?.isVerified && <ShieldCheck size={14} color={c.amber} />}
+            {l.landlord?.isVerified && <ShieldCheck size={14} color={c.amber} />}
           </p>
           <p style={{ margin: "2px 0 0", fontSize: 12, color: c.textMuted }}>Landlord</p>
         </div>
@@ -324,8 +328,8 @@ function ListingDetail() {
 
       {/* Key Details Chips */}
       <div style={{ display: "flex", gap: 8, overflowX: "auto", padding: "0 16px 16px", scrollbarWidth: "none" }}>
-        {listing.bedrooms > 0 && (
-          <DetailChip icon={<BedDouble size={13} />} label={`${listing.bedrooms} Bedroom${listing.bedrooms > 1 ? "s" : ""}`} />
+        {l.bedrooms > 0 && (
+          <DetailChip icon={<BedDouble size={13} />} label={`${l.bedrooms} Bedroom${l.bedrooms > 1 ? "s" : ""}`} />
         )}
         <DetailChip icon={<Bath size={13} />} label="1 Bathroom" />
         {listing.propertyType && (
@@ -379,9 +383,9 @@ function ListingDetail() {
       <div style={{ padding: "0 16px 16px", borderTop: `0.5px solid ${c.border}`, paddingTop: 16 }}>
         <h2 style={{ margin: "0 0 10px", fontSize: 13, fontWeight: 600, color: c.textMuted, textTransform: "uppercase", letterSpacing: 0.5 }}>Location</h2>
         <div ref={mapContainer} style={{ width: "100%", height: 180, borderRadius: 12, backgroundColor: c.surface, overflow: "hidden" }} />
-        {listing.lat && listing.lng && (
+        {(l.lat ?? l.location?.lat) && (l.lng ?? l.location?.lng) && (
           <a
-            href={`https://www.google.com/maps?q=${listing.lat},${listing.lng}`}
+            href={`https://www.google.com/maps?q=${l.lat ?? l.location?.lat},${l.lng ?? l.location?.lng}`}
             target="_blank" rel="noreferrer"
             style={{ display: "inline-block", marginTop: 10, fontSize: 13, fontWeight: 600, color: c.green, textDecoration: "none" }}
           >

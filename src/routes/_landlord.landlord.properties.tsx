@@ -1,348 +1,252 @@
+// Landlord Properties — Supabase-backed (properties table)
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useForm, Controller } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import {
-  Plus, Building2, MapPin, Users, Loader2, Trash2,
-  MoreHorizontal, AlertCircle,
-} from "lucide-react";
+import { Plus, Building2, MapPin, Users, Loader2, Trash2, MoreHorizontal, AlertCircle, AlertTriangle } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-
+import { supabase } from "@/lib/supabase";
+import { useAuthStore } from "@/store/authStore";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
-} from "@/components/ui/dialog";
-import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
-import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
-import { propertiesApi } from "@/api";
-import type { Property } from "@/api";
-import { formatCurrency } from "@/utils/format";
-import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_landlord/landlord/properties")({
-  head: () => ({ meta: [{ title: "Properties — MyTenant" }] }),
+  head: () => ({ meta: [{ title: "Properties — NjangaRent" }] }),
   component: PropertiesPage,
 });
 
-// ── Property types — must match backend constants.py PROPERTY_TYPES exactly ──
-
-const PROPERTY_TYPES = [
-  { value: "apartment",  label: "Apartment / Flat"          },
-  { value: "house",      label: "House / Villa"             },
-  { value: "commercial", label: "Commercial (Shop / Office)" },
-  { value: "other",      label: "Other"                     },
-] as const;
-
-// ── Form schema ───────────────────────────────────────────────────────────────
-
 const propertySchema = z.object({
-  name:         z.string().min(1, "Property name is required"),
-  address:      z.string().min(3, "Please enter a valid address"),
-  propertyType: z.enum(["apartment", "house", "commercial", "other"], {
-    errorMap: () => ({ message: "Select a property type" }),
-  }),
-  monthlyRent:  z.coerce.number().min(1000, "Minimum rent is 1 000 FCFA"),
-  description:  z.string().optional(),
+  name:          z.string().min(2, "Property name is required"),
+  address:       z.string().min(4, "Address is required"),
+  city:          z.string().min(2, "City is required"),
+  propertyType:  z.enum(["apartment", "studio", "house", "room", "villa", "office"]),
+  totalUnits:    z.coerce.number().min(1).max(500),
 });
 type PropertyForm = z.infer<typeof propertySchema>;
 
-// ── Page component ────────────────────────────────────────────────────────────
+const TYPE_LABELS: Record<string, string> = {
+  apartment: "Apartment",
+  studio: "Studio",
+  house: "House",
+  room: "Room",
+  villa: "Villa",
+  office: "Office",
+};
 
 function PropertiesPage() {
   const qc = useQueryClient();
-  const [addOpen,  setAddOpen]  = useState(false);
+  const user = useAuthStore((s) => s.user);
+  const [addOpen, setAddOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
-  const propertiesQ = useQuery({
-    queryKey: ["properties"],
-    queryFn:  () => propertiesApi.list({ limit: 50 }),
-  });
-
-  const properties: Property[] =
-    (propertiesQ.data as { data?: Property[] } | undefined)?.data ?? [];
-
-  // ── Create ──────────────────────────────────────────────────────────────────
-
-  const {
-    register, handleSubmit, control, reset,
-    formState: { errors },
-  } = useForm<PropertyForm>({
+  const { register, handleSubmit, formState: { errors }, reset, setValue, watch } = useForm<PropertyForm>({
     resolver: zodResolver(propertySchema),
-    defaultValues: { name: "", address: "", propertyType: undefined, monthlyRent: 0, description: "" },
+    defaultValues: { propertyType: "apartment", totalUnits: 1 },
   });
 
-  const createMutation = useMutation({
-    mutationFn: (values: PropertyForm) =>
-      propertiesApi.create({
-        name:         values.name,
-        address:      values.address,
-        propertyType: values.propertyType,
-        monthlyRent:  values.monthlyRent,
-        description:  values.description,
-      }),
+  const { data = [], isLoading, error } = useQuery({
+    queryKey: ["properties", user?.id],
+    queryFn: async () => {
+      if (!user?.id) return [];
+      const { data, error } = await supabase
+        .from("properties")
+        .select("*")
+        .eq("landlord_id", user.id)
+        .order("created_at", { ascending: false });
+      if (error) throw new Error(error.message);
+      return data ?? [];
+    },
+    enabled: !!user?.id,
+  });
+
+  const addMut = useMutation({
+    mutationFn: async (form: PropertyForm) => {
+      const { error } = await supabase.from("properties").insert({
+        landlord_id: user?.id,
+        name: form.name,
+        address: form.address,
+        city: form.city,
+        property_type: form.propertyType,
+        total_units: form.totalUnits,
+      });
+      if (error) throw new Error(error.message);
+    },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["properties"] });
-      toast.success("Property added successfully");
+      toast.success("Property added");
       setAddOpen(false);
       reset();
+      qc.invalidateQueries({ queryKey: ["properties"] });
     },
-    onError: (e: { message?: string }) =>
-      toast.error(e?.message ?? "Failed to add property"),
+    onError: (e: any) => toast.error(e.message),
   });
 
-  // ── Delete ──────────────────────────────────────────────────────────────────
-
-  const deleteMutation = useMutation({
-    mutationFn: (id: string) => propertiesApi.delete(id),
+  const deleteMut = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("properties").delete().eq("id", id);
+      if (error) throw new Error(error.message);
+    },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["properties"] });
       toast.success("Property removed");
       setDeleteId(null);
+      qc.invalidateQueries({ queryKey: ["properties"] });
     },
-    onError: (e: { message?: string }) =>
-      toast.error(e?.message ?? "Failed to remove property"),
+    onError: (e: any) => toast.error(e.message),
   });
 
+  const properties = data as any[];
+
   return (
-    <div className="max-w-6xl mx-auto space-y-6">
-      {/* Header */}
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl lg:text-3xl font-bold tracking-tight">Properties</h1>
-          <p className="text-muted-foreground text-sm mt-1">Manage your rental properties.</p>
+          <h1 className="text-xl font-bold tracking-tight">Properties</h1>
+          <p className="text-sm text-muted-foreground mt-1">{properties.length} properties registered.</p>
         </div>
         <Button onClick={() => setAddOpen(true)} className="rounded-xl gap-2">
           <Plus className="h-4 w-4" /> Add property
         </Button>
       </div>
 
-      {/* List */}
-      {propertiesQ.isLoading ? (
-        <div className="flex justify-center py-16">
-          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-        </div>
-      ) : properties.length === 0 ? (
-        <EmptyState onAdd={() => setAddOpen(true)} />
-      ) : (
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {properties.map((p) => (
-            <PropertyCard key={p.id} property={p} onDelete={() => setDeleteId(p.id)} />
-          ))}
+      {/* Error */}
+      {error && (
+        <div className="flex items-center gap-3 p-4 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-sm">
+          <AlertTriangle className="h-4 w-4 shrink-0" />
+          <span>Could not load properties: {(error as Error).message}</span>
         </div>
       )}
 
-      {/* ── Add dialog ─────────────────────────────────────────────────────── */}
-      <Dialog open={addOpen} onOpenChange={(v) => { setAddOpen(v); if (!v) reset(); }}>
-        <DialogContent className="sm:max-w-lg rounded-2xl">
-          <DialogHeader>
-            <DialogTitle>Add property</DialogTitle>
-          </DialogHeader>
+      {isLoading && (
+        <div className="flex justify-center py-16">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+      )}
 
-          <form onSubmit={handleSubmit((v) => createMutation.mutate(v))} className="space-y-4 pt-1">
+      {!isLoading && properties.length === 0 && !error && (
+        <div className="text-center py-16 text-muted-foreground border-2 border-dashed border-border rounded-2xl">
+          <Building2 className="h-10 w-10 mx-auto mb-3 opacity-40" />
+          <p className="font-medium">No properties yet</p>
+          <p className="text-xs mt-1">Add your first property to start managing tenants.</p>
+          <Button onClick={() => setAddOpen(true)} className="mt-4 rounded-xl gap-2">
+            <Plus className="h-4 w-4" /> Add property
+          </Button>
+        </div>
+      )}
 
-            {/* Name */}
-            <Field label="Property name" error={errors.name?.message}>
-              <Input
-                className={cn("rounded-xl h-11", errors.name && "border-destructive focus-visible:ring-destructive")}
-                placeholder="Sunshine Apartments Block A"
-                {...register("name")}
-              />
-            </Field>
-
-            {/* Address */}
-            <Field label="Address" error={errors.address?.message}>
-              <Input
-                className={cn("rounded-xl h-11", errors.address && "border-destructive focus-visible:ring-destructive")}
-                placeholder="123 Rue de la Paix, Yaoundé"
-                {...register("address")}
-              />
-            </Field>
-
-            {/* Property type — Controller required for react-hook-form + Radix Select */}
-            <Field label="Property type" error={errors.propertyType?.message}>
-              <Controller
-                name="propertyType"
-                control={control}
-                render={({ field }) => (
-                  <Select onValueChange={field.onChange} value={field.value ?? ""}>
-                    <SelectTrigger
-                      className={cn(
-                        "rounded-xl h-11",
-                        errors.propertyType && "border-destructive focus-visible:ring-destructive ring-1 ring-destructive",
-                      )}
-                    >
-                      <SelectValue placeholder="Select type…" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {PROPERTY_TYPES.map((t) => (
-                        <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              />
-            </Field>
-
-            {/* Monthly rent */}
-            <Field label="Monthly rent (FCFA)" error={errors.monthlyRent?.message}>
-              <Input
-                type="number"
-                className={cn("rounded-xl h-11", errors.monthlyRent && "border-destructive focus-visible:ring-destructive")}
-                placeholder="75000"
-                {...register("monthlyRent")}
-              />
-            </Field>
-
-            {/* Description */}
-            <Field label="Description (optional)" error={errors.description?.message}>
-              <Input
-                className="rounded-xl h-11"
-                placeholder="3-bedroom self-contained unit"
-                {...register("description")}
-              />
-            </Field>
-
-            {/* API error */}
-            {createMutation.isError && (
-              <p className="flex items-center gap-2 text-sm text-destructive bg-destructive/10 rounded-xl px-3 py-2">
-                <AlertCircle className="h-4 w-4 shrink-0" />
-                {(createMutation.error as { message?: string })?.message ?? "Failed to add property"}
+      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {properties.map((p) => (
+          <div key={p.id} className="rounded-2xl border border-border bg-card p-5 space-y-3">
+            <div className="flex items-start justify-between">
+              <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                <Building2 className="h-5 w-5 text-primary" />
+              </div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="rounded-lg h-8 w-8">
+                    <MoreHorizontal className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    className="text-destructive focus:text-destructive gap-2"
+                    onClick={() => setDeleteId(p.id)}
+                  >
+                    <Trash2 className="h-4 w-4" /> Delete property
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+            <div>
+              <p className="font-semibold text-foreground">{p.name}</p>
+              <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                <MapPin className="h-3 w-3" /> {p.address}, {p.city}
               </p>
-            )}
+            </div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <Badge variant="secondary" className="rounded-full text-xs">
+                {TYPE_LABELS[p.property_type] ?? p.property_type}
+              </Badge>
+              <Badge variant="outline" className="rounded-full text-xs gap-1">
+                <Users className="h-3 w-3" /> {p.total_units ?? 1} units
+              </Badge>
+            </div>
+          </div>
+        ))}
+      </div>
 
-            <DialogFooter className="pt-2">
-              <Button type="button" variant="outline" className="rounded-xl" onClick={() => { setAddOpen(false); reset(); }}>
-                Cancel
-              </Button>
-              <Button type="submit" className="rounded-xl" disabled={createMutation.isPending}>
-                {createMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                Add property
+      {/* Add Property Dialog */}
+      <Dialog open={addOpen} onOpenChange={setAddOpen}>
+        <DialogContent className="max-w-md rounded-2xl">
+          <DialogHeader>
+            <DialogTitle>Add Property</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSubmit((d) => addMut.mutate(d))} className="space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="prop-name">Property name</Label>
+              <Input id="prop-name" placeholder="e.g. Bonduma Apartments Block A" className="rounded-xl" {...register("name")} />
+              {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="prop-address">Address</Label>
+              <Input id="prop-address" placeholder="Street address" className="rounded-xl" {...register("address")} />
+              {errors.address && <p className="text-xs text-destructive">{errors.address.message}</p>}
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="prop-city">City</Label>
+                <Input id="prop-city" placeholder="Buea" className="rounded-xl" {...register("city")} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Type</Label>
+                <Select defaultValue="apartment" onValueChange={(v) => setValue("propertyType", v as any)}>
+                  <SelectTrigger className="rounded-xl"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(TYPE_LABELS).map(([k, v]) => (
+                      <SelectItem key={k} value={k}>{v}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="prop-units">Total units</Label>
+              <Input id="prop-units" type="number" min={1} className="rounded-xl" {...register("totalUnits")} />
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setAddOpen(false)} className="rounded-xl">Cancel</Button>
+              <Button type="submit" disabled={addMut.isPending} className="rounded-xl">
+                {addMut.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Add Property"}
               </Button>
             </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
 
-      {/* ── Delete confirmation ─────────────────────────────────────────────── */}
-      <AlertDialog open={!!deleteId} onOpenChange={(v) => !v && setDeleteId(null)}>
+      {/* Delete confirmation */}
+      <AlertDialog open={!!deleteId} onOpenChange={(o) => !o && setDeleteId(null)}>
         <AlertDialogContent className="rounded-2xl">
           <AlertDialogHeader>
-            <AlertDialogTitle>Remove property?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will permanently remove the property. Any tenants must be removed first.
-            </AlertDialogDescription>
+            <AlertDialogTitle>Delete property?</AlertDialogTitle>
+            <AlertDialogDescription>This cannot be undone.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel className="rounded-xl">Cancel</AlertDialogCancel>
             <AlertDialogAction
-              className="rounded-xl bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              onClick={() => deleteId && deleteMutation.mutate(deleteId)}
+              className="bg-destructive text-destructive-foreground rounded-xl"
+              onClick={() => deleteId && deleteMut.mutate(deleteId)}
             >
-              {deleteMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Remove"}
+              {deleteMut.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Delete"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
-  );
-}
-
-// ── Sub-components ────────────────────────────────────────────────────────────
-
-function PropertyCard({ property: p, onDelete }: { property: Property; onDelete: () => void }) {
-  const typeLabel =
-    PROPERTY_TYPES.find((t) => t.value === p.propertyType)?.label ?? p.propertyType;
-
-  return (
-    <div className="rounded-2xl border border-border bg-card p-5 shadow-soft flex flex-col gap-4">
-      <div className="flex items-start justify-between">
-        <div className="h-10 w-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
-          <Building2 className="h-5 w-5" />
-        </div>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg -mr-1">
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="rounded-xl">
-            <DropdownMenuItem
-              className="text-destructive focus:text-destructive gap-2 cursor-pointer"
-              onClick={onDelete}
-            >
-              <Trash2 className="h-4 w-4" /> Remove property
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-
-      <div className="flex-1">
-        <p className="font-semibold leading-tight">{p.name}</p>
-        <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
-          <MapPin className="h-3 w-3 shrink-0" />
-          <span className="truncate">{p.address}</span>
-        </div>
-      </div>
-
-      <div className="flex items-center gap-2 flex-wrap">
-        <Badge variant="secondary" className="rounded-lg text-xs">{typeLabel}</Badge>
-        <div className="flex items-center gap-1 text-xs text-muted-foreground ml-auto">
-          <Users className="h-3 w-3" />
-          {p.tenantCount ?? 0} tenant{p.tenantCount !== 1 ? "s" : ""}
-        </div>
-      </div>
-
-      <div className="rounded-xl bg-muted/50 px-3 py-2 text-sm">
-        <p className="text-xs text-muted-foreground">Monthly rent</p>
-        <p className="font-semibold mt-0.5">{formatCurrency(p.monthlyRent)}</p>
-      </div>
-    </div>
-  );
-}
-
-function EmptyState({ onAdd }: { onAdd: () => void }) {
-  return (
-    <div className="flex flex-col items-center justify-center py-20 text-center rounded-2xl border border-dashed border-border">
-      <div className="h-14 w-14 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mb-4">
-        <Building2 className="h-7 w-7" />
-      </div>
-      <h3 className="font-semibold">No properties yet</h3>
-      <p className="text-sm text-muted-foreground mt-1 max-w-xs">
-        Add your first property to start inviting tenants and collecting rent.
-      </p>
-      <Button onClick={onAdd} className="mt-5 rounded-xl gap-2">
-        <Plus className="h-4 w-4" /> Add your first property
-      </Button>
-    </div>
-  );
-}
-
-/** Shared field wrapper: labels turn red and an error message appears when invalid. */
-function Field({
-  label, error, children,
-}: { label: string; error?: string; children: React.ReactNode }) {
-  return (
-    <div className="space-y-1.5">
-      <Label className={cn(error && "text-destructive")}>{label}</Label>
-      {children}
-      {error && (
-        <p className="flex items-center gap-1 text-xs text-destructive">
-          <AlertCircle className="h-3 w-3 shrink-0" /> {error}
-        </p>
-      )}
     </div>
   );
 }

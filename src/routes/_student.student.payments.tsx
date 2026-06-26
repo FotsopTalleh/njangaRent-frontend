@@ -1,17 +1,21 @@
+// Student Payments — Supabase-backed (nkwa_payments table)
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Loader2, CreditCard, CheckCircle2, XCircle, Clock } from "lucide-react";
-import { nkwaPaymentsApi, type NkwaStatus } from "@/api/nkwaPayments.api";
+import { Loader2, CreditCard, CheckCircle2, XCircle, Clock, AlertTriangle } from "lucide-react";
+import { supabase } from "@/lib/supabase";
+import { useAuthStore } from "@/store/authStore";
 
 export const Route = createFileRoute("/_student/student/payments")({
   head: () => ({ meta: [{ title: "My Payments — NjangaRent" }] }),
   component: StudentPayments,
 });
 
+type NkwaStatus = "initiated" | "confirmed" | "failed";
+
 const STATUS_CONFIG: Record<NkwaStatus, { label: string; color: string; icon: typeof CheckCircle2 }> = {
-  initiated: { label: "Pending",   color: "text-warning bg-warning/10",          icon: Clock        },
-  confirmed: { label: "Confirmed", color: "text-success bg-success/10",          icon: CheckCircle2 },
-  failed:    { label: "Failed",    color: "text-destructive bg-destructive/10",  icon: XCircle      },
+  initiated: { label: "Pending",   color: "text-amber-700 bg-amber-100",     icon: Clock        },
+  confirmed: { label: "Confirmed", color: "text-emerald-700 bg-emerald-100", icon: CheckCircle2 },
+  failed:    { label: "Failed",    color: "text-red-700 bg-red-100",         icon: XCircle      },
 };
 
 function formatXAF(n: number) {
@@ -19,20 +23,42 @@ function formatXAF(n: number) {
 }
 
 function StudentPayments() {
-  const { data, isLoading } = useQuery({
-    queryKey: ["nkwa-payments", "student"],
-    queryFn:  nkwaPaymentsApi.list,
+  const user = useAuthStore((s) => s.user);
+
+  const { data = [], isLoading, error } = useQuery({
+    queryKey: ["student-payments", user?.id],
+    queryFn: async () => {
+      if (!user?.id) return [];
+      const { data, error } = await supabase
+        .from("nkwa_payments")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false });
+      if (error) throw new Error(error.message);
+      return data ?? [];
+    },
+    enabled: !!user?.id,
   });
 
-  const payments = data?.data ?? [];
-  const totalConfirmed = payments.filter((p) => p.nkwaStatus === "confirmed").reduce((sum, p) => sum + p.amountXaf, 0);
+  const payments = data as any[];
+  const totalConfirmed = payments
+    .filter((p) => p.nkwa_status === "confirmed")
+    .reduce((sum, p) => sum + (p.amount_xaf ?? p.amount ?? 0), 0);
 
   return (
     <div className="space-y-6 max-w-2xl">
       <div>
         <h1 className="text-xl font-bold tracking-tight">Payment History</h1>
-        <p className="text-sm text-muted-foreground">All payments made via Nkwa Mobile Money.</p>
+        <p className="text-sm text-muted-foreground mt-1">All payments made via Nkwa Mobile Money.</p>
       </div>
+
+      {/* Error */}
+      {error && (
+        <div className="flex items-center gap-3 p-4 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-sm">
+          <AlertTriangle className="h-4 w-4 shrink-0" />
+          <span>Could not load payments: {(error as Error).message}</span>
+        </div>
+      )}
 
       {/* Total confirmed */}
       {totalConfirmed > 0 && (
@@ -51,30 +77,34 @@ function StudentPayments() {
         </div>
       )}
 
-      {!isLoading && payments.length === 0 && (
+      {!isLoading && !error && payments.length === 0 && (
         <div className="text-center py-12 text-muted-foreground">
           <CreditCard className="h-10 w-10 mx-auto mb-3 opacity-40" aria-hidden="true" />
-          <p>No payments yet. Pay your deposit or rent from any listing page.</p>
+          <p>No payments yet.</p>
+          <p className="text-xs mt-1">Pay your deposit or rent from any listing page.</p>
         </div>
       )}
 
       <div className="space-y-3">
         {payments.map((p) => {
-          const cfg  = STATUS_CONFIG[p.nkwaStatus];
+          const status = (p.nkwa_status ?? "initiated") as NkwaStatus;
+          const cfg = STATUS_CONFIG[status] ?? STATUS_CONFIG.initiated;
           const Icon = cfg.icon;
+          const dateStr = p.created_at
+            ? new Date(p.created_at).toLocaleDateString("en-CM", { day: "2-digit", month: "short", year: "numeric" })
+            : "—";
+          const amount = p.amount_xaf ?? p.amount ?? 0;
           return (
             <div key={p.id} className="rounded-xl border border-border bg-card px-4 py-3.5 flex items-center gap-4">
               <span className={`h-9 w-9 rounded-full flex items-center justify-center shrink-0 ${cfg.color}`}>
                 <Icon className="h-4 w-4" aria-hidden="true" />
               </span>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium capitalize">{p.paymentType} payment</p>
-                <p className="text-xs text-muted-foreground truncate">
-                  {new Date(p.initiatedAt).toLocaleDateString("en-CM", { day: "2-digit", month: "short", year: "numeric" })}
-                </p>
+                <p className="text-sm font-medium capitalize">{p.payment_type ?? "Payment"}</p>
+                <p className="text-xs text-muted-foreground">{dateStr}</p>
               </div>
               <div className="text-right shrink-0">
-                <p className="text-sm font-bold">{formatXAF(p.amountXaf)}</p>
+                <p className="text-sm font-bold">{formatXAF(amount)}</p>
                 <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${cfg.color}`}>{cfg.label}</span>
               </div>
             </div>
