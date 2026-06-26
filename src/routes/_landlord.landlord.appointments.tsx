@@ -1,9 +1,8 @@
-// Landlord Appointments — Supabase-backed (appointments table)
+// Landlord Appointments — backend API (no direct Supabase calls)
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Loader2, Calendar, CheckCircle2, XCircle, MapPin, User, AlertTriangle } from "lucide-react";
-import { supabase } from "@/lib/supabase";
-import { useAuthStore } from "@/store/authStore";
+import { appointmentsApi } from "@/api/appointments.api";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useState } from "react";
@@ -24,30 +23,24 @@ const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
 
 function LandlordAppointments() {
   const qc = useQueryClient();
-  const user = useAuthStore((s) => s.user);
   const [statusFilter, setStatusFilter] = useState("all");
 
-  const { data = [], isLoading, error } = useQuery({
-    queryKey: ["landlord-appointments", user?.id, statusFilter],
+  // Fetch via backend (raw SQL, bypasses RLS)
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["landlord-appointments", statusFilter],
     queryFn: async () => {
-      if (!user?.id) return [];
-      let query = supabase
-        .from("appointments")
-        .select("*, listings(id, title, display_address), users:student_id(id, full_name, email)")
-        .eq("landlord_id", user.id)
-        .order("scheduled_date", { ascending: true });
-      if (statusFilter !== "all") query = query.eq("status", statusFilter);
-      const { data, error } = await query;
-      if (error) throw new Error(error.message);
-      return data ?? [];
+      const res = await appointmentsApi.list(
+        statusFilter !== "all" ? { status: statusFilter as any } : undefined
+      );
+      return res.data ?? [];
     },
-    enabled: !!user?.id,
   });
 
   const updateStatus = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: string }) => {
-      const { error } = await supabase.from("appointments").update({ status }).eq("id", id);
-      if (error) throw new Error(error.message);
+      if (status === "confirmed") await appointmentsApi.respond(id, { action: "confirm" });
+      else if (status === "declined") await appointmentsApi.respond(id, { action: "decline" });
+      else if (status === "completed") await appointmentsApi.complete(id);
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["landlord-appointments"] }),
   });

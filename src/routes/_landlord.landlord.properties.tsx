@@ -1,14 +1,13 @@
-// Landlord Properties — Supabase-backed (properties table)
+// Landlord Properties — routed through the backend API (no direct Supabase calls)
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Plus, Building2, MapPin, Users, Loader2, Trash2, MoreHorizontal, AlertCircle, AlertTriangle } from "lucide-react";
+import { Plus, Building2, MapPin, Users, Loader2, Trash2, MoreHorizontal, AlertTriangle } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-import { supabase } from "@/lib/supabase";
-import { useAuthStore } from "@/store/authStore";
+import { propertiesApi, type CreatePropertyBody } from "@/api/properties.api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,61 +23,51 @@ export const Route = createFileRoute("/_landlord/landlord/properties")({
 });
 
 const propertySchema = z.object({
-  name:          z.string().min(2, "Property name is required"),
-  address:       z.string().min(4, "Address is required"),
-  city:          z.string().min(2, "City is required"),
-  propertyType:  z.enum(["apartment", "studio", "house", "room", "villa", "office"]),
-  totalUnits:    z.coerce.number().min(1).max(500),
+  name:         z.string().min(2, "Property name is required"),
+  address:      z.string().min(4, "Address is required"),
+  propertyType: z.enum(["apartment", "studio", "house", "room", "villa", "office"]),
+  monthlyRent:  z.coerce.number().min(1000, "Monthly rent must be at least 1,000 XAF"),
+  description:  z.string().optional(),
 });
 type PropertyForm = z.infer<typeof propertySchema>;
 
 const TYPE_LABELS: Record<string, string> = {
   apartment: "Apartment",
-  studio: "Studio",
-  house: "House",
-  room: "Room",
-  villa: "Villa",
-  office: "Office",
+  studio:    "Studio",
+  house:     "House",
+  room:      "Room",
+  villa:     "Villa",
+  office:    "Office",
 };
 
 function PropertiesPage() {
   const qc = useQueryClient();
-  const user = useAuthStore((s) => s.user);
-  const [addOpen, setAddOpen] = useState(false);
+  const [addOpen,  setAddOpen]  = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
-  const { register, handleSubmit, formState: { errors }, reset, setValue, watch } = useForm<PropertyForm>({
+  const { register, handleSubmit, formState: { errors }, reset, setValue } = useForm<PropertyForm>({
     resolver: zodResolver(propertySchema),
-    defaultValues: { propertyType: "apartment", totalUnits: 1 },
+    defaultValues: { propertyType: "apartment", monthlyRent: 0 },
   });
 
-  const { data = [], isLoading, error } = useQuery({
-    queryKey: ["properties", user?.id],
-    queryFn: async () => {
-      if (!user?.id) return [];
-      const { data, error } = await supabase
-        .from("properties")
-        .select("*")
-        .eq("landlord_id", user.id)
-        .order("created_at", { ascending: false });
-      if (error) throw new Error(error.message);
-      return data ?? [];
-    },
-    enabled: !!user?.id,
+  // ── Fetch properties via backend (raw SQL, bypasses RLS) ─────────────────────
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["properties"],
+    queryFn: () => propertiesApi.list(),
   });
 
+  const properties = data?.data ?? [];
+
+  // ── Create ───────────────────────────────────────────────────────────────────
   const addMut = useMutation({
-    mutationFn: async (form: PropertyForm) => {
-      const { error } = await supabase.from("properties").insert({
-        landlord_id: user?.id,
-        name: form.name,
-        address: form.address,
-        city: form.city,
-        property_type: form.propertyType,
-        total_units: form.totalUnits,
-      });
-      if (error) throw new Error(error.message);
-    },
+    mutationFn: (form: PropertyForm) =>
+      propertiesApi.create({
+        name:         form.name,
+        address:      form.address,
+        propertyType: form.propertyType,
+        monthlyRent:  form.monthlyRent,
+        description:  form.description,
+      } as CreatePropertyBody),
     onSuccess: () => {
       toast.success("Property added");
       setAddOpen(false);
@@ -88,11 +77,9 @@ function PropertiesPage() {
     onError: (e: any) => toast.error(e.message),
   });
 
+  // ── Delete ───────────────────────────────────────────────────────────────────
   const deleteMut = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from("properties").delete().eq("id", id);
-      if (error) throw new Error(error.message);
-    },
+    mutationFn: (id: string) => propertiesApi.delete(id),
     onSuccess: () => {
       toast.success("Property removed");
       setDeleteId(null);
@@ -100,8 +87,6 @@ function PropertiesPage() {
     },
     onError: (e: any) => toast.error(e.message),
   });
-
-  const properties = data as any[];
 
   return (
     <div className="space-y-6">
@@ -166,15 +151,15 @@ function PropertiesPage() {
             <div>
               <p className="font-semibold text-foreground">{p.name}</p>
               <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
-                <MapPin className="h-3 w-3" /> {p.address}, {p.city}
+                <MapPin className="h-3 w-3" /> {p.address}
               </p>
             </div>
             <div className="flex items-center gap-2 flex-wrap">
               <Badge variant="secondary" className="rounded-full text-xs">
-                {TYPE_LABELS[p.property_type] ?? p.property_type}
+                {TYPE_LABELS[p.propertyType] ?? p.propertyType}
               </Badge>
               <Badge variant="outline" className="rounded-full text-xs gap-1">
-                <Users className="h-3 w-3" /> {p.total_units ?? 1} units
+                <Users className="h-3 w-3" /> {p.tenantCount} tenant{p.tenantCount !== 1 ? "s" : ""}
               </Badge>
             </div>
           </div>
@@ -195,14 +180,10 @@ function PropertiesPage() {
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="prop-address">Address</Label>
-              <Input id="prop-address" placeholder="Street address" className="rounded-xl" {...register("address")} />
+              <Input id="prop-address" placeholder="Full address e.g. Molyko, Buea" className="rounded-xl" {...register("address")} />
               {errors.address && <p className="text-xs text-destructive">{errors.address.message}</p>}
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label htmlFor="prop-city">City</Label>
-                <Input id="prop-city" placeholder="Buea" className="rounded-xl" {...register("city")} />
-              </div>
               <div className="space-y-1.5">
                 <Label>Type</Label>
                 <Select defaultValue="apartment" onValueChange={(v) => setValue("propertyType", v as any)}>
@@ -214,10 +195,15 @@ function PropertiesPage() {
                   </SelectContent>
                 </Select>
               </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="prop-rent">Monthly rent (XAF)</Label>
+                <Input id="prop-rent" type="number" min={1000} placeholder="e.g. 30000" className="rounded-xl" {...register("monthlyRent")} />
+                {errors.monthlyRent && <p className="text-xs text-destructive">{errors.monthlyRent.message}</p>}
+              </div>
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="prop-units">Total units</Label>
-              <Input id="prop-units" type="number" min={1} className="rounded-xl" {...register("totalUnits")} />
+              <Label htmlFor="prop-desc">Description (optional)</Label>
+              <Input id="prop-desc" placeholder="Brief description..." className="rounded-xl" {...register("description")} />
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setAddOpen(false)} className="rounded-xl">Cancel</Button>

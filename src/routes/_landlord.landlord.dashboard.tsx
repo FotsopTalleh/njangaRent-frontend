@@ -5,7 +5,7 @@ import {
   Plus, UserPlus, FileCheck, ArrowRight, Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { supabase } from "@/lib/supabase";
+import { listingsApi } from "@/api/listings.api";
 import { useAuthStore } from "@/store/authStore";
 
 export const Route = createFileRoute("/_landlord/landlord/dashboard")({
@@ -17,18 +17,13 @@ function LandlordDashboard() {
   const user = useAuthStore((s) => s.user);
   const firstName = user?.name?.split(" ")[0] ?? "";
 
-  // Fetch landlord's own listings from Supabase directly
+  // Fetch landlord's own listings via backend (raw SQL, bypasses RLS)
   const listingsQ = useQuery({
     queryKey: ["landlord-listings-count", user?.id],
     queryFn: async () => {
       if (!user?.id) return [];
-      const { data, error } = await supabase
-        .from("listings")
-        .select("id, status, title, created_at")
-        .eq("landlord_id", user.id)
-        .order("created_at", { ascending: false });
-      if (error) throw new Error(error.message);
-      return data ?? [];
+      const res = await listingsApi.getMyListings();
+      return res.data ?? [];
     },
     enabled: !!user?.id,
     staleTime: 60_000,
