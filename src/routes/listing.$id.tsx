@@ -5,11 +5,12 @@ import useEmblaCarousel from "embla-carousel-react";
 import {
   ArrowLeft, Heart, ShieldCheck, Star, MapPin,
   Wifi, Zap, Droplets, Shield, Car, Tv,
-  CheckCircle, AlertCircle, XCircle, BedDouble, Bath, MessageSquare,
+  CheckCircle, BedDouble, Bath, MessageSquare,
+  Loader2
 } from "lucide-react";
 import { useAuthStore } from "@/store/authStore";
-import { useThemeStore } from "@/store/themeStore";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/listing/$id")({
   head: () => ({ meta: [{ title: "Listing Details — NjangaRent" }] }),
@@ -31,21 +32,7 @@ function ListingDetail() {
   const { id } = Route.useParams();
   const router = useRouter();
   const { token, user } = useAuthStore();
-  const { theme } = useThemeStore();
-  const isDark = theme === "dark";
 
-  // Theme-aware color helper
-  const c = {
-    bg:        isDark ? "#0f1f18" : "#FFFFFF",
-    surface:   isDark ? "#162b20" : "#F9F7F2",
-    border:    isDark ? "rgba(255,255,255,0.08)" : "#E8E4DC",
-    text:      isDark ? "#e8f5ee" : "#1A1A18",
-    textMuted: isDark ? "#8ab39a" : "#6B6B68",
-    textFaint: isDark ? "#5a8a6a" : "#A8A8A5",
-    green:     "#1B4332",
-    greenLight: isDark ? "#2d6a4f" : "#EAF4EE",
-    amber:     "#D4A017",
-  };
   const [showSchedule, setShowSchedule] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
@@ -66,28 +53,24 @@ function ListingDetail() {
   const { data: listingRaw, isLoading, isError, error: listingError } = useQuery({
     queryKey: ["listing", id],
     queryFn: async () => {
-      // Intercept dummy listing IDs — no network request needed
       if (id.startsWith("dummy-")) {
         const { DUMMY_LISTINGS } = await import("@/data/dummyListings");
         const dummy = DUMMY_LISTINGS.find(l => l.id === id);
         if (dummy) return dummy;
         throw new Error("Listing not found");
       }
-      
       const { supabaseListings } = await import("@/lib/supabase");
       return supabaseListings.getById(id);
     },
-    retry: false,  // show error immediately; don't hammer the DB
+    retry: false,
   });
 
-  // Cast to any so both the old Listing type and Supabase shape work without type errors
   const listing = listingRaw as any;
 
   const { data: rawSlots = [] } = useQuery({
     queryKey: ["visit-slots", id],
     queryFn: async () => {
       if (id.startsWith("dummy-")) return [];
-
       const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
       const res = await fetch(`/api/visits/slots/${id}`, { headers });
       if (!res.ok) return [];
@@ -97,7 +80,6 @@ function ListingDetail() {
     enabled: showSchedule,
   });
 
-  // Group slots by date
   const groupedSlots = (rawSlots as any[]).reduce((acc: Record<string, any[]>, slot: any) => {
     const d = new Date(slot.slot_datetime);
     const dateKey = d.toISOString().split("T")[0];
@@ -126,7 +108,6 @@ function ListingDetail() {
 
   const startChat = useMutation({
     mutationFn: async () => {
-      // landlordId is available in the normalised listing object
       const l = listing as any;
       const landlordId = l?.landlordId ?? l?.landlord_id;
       if (!landlordId) throw new Error("No landlord info available");
@@ -149,7 +130,6 @@ function ListingDetail() {
     onError: () => toast.error("Could not start chat — messaging requires the backend."),
   });
 
-  // Map thumbnail
   useEffect(() => {
     if (!mapContainer.current || !listing || mapRef.current) return;
     import("maplibre-gl").then((ml) => {
@@ -179,10 +159,10 @@ function ListingDetail() {
 
   if (isLoading) {
     return (
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", backgroundColor: c.bg }}>
-        <div style={{ textAlign: "center" }}>
-          <div style={{ width: 40, height: 40, border: "3px solid #E8E4DC", borderTopColor: c.green, borderRadius: "50%", animation: "spin 0.8s linear infinite", margin: "0 auto 12px" }} />
-          <p style={{ color: c.textMuted, fontSize: 14 }}>Loading listing...</p>
+      <div className="flex items-center justify-center min-h-screen bg-background">
+        <div className="text-center">
+          <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto mb-3" />
+          <p className="text-sm text-muted-foreground">Loading listing...</p>
         </div>
       </div>
     );
@@ -191,13 +171,13 @@ function ListingDetail() {
   if (!listing || isError) {
     const msg = (listingError as Error)?.message ?? "Could not load listing";
     return (
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", backgroundColor: c.bg }}>
-        <div style={{ textAlign: "center", padding: "0 24px" }}>
-          <p style={{ color: c.textMuted, fontSize: 15, marginBottom: 4 }}>{msg}</p>
-          <p style={{ color: c.textFaint, fontSize: 12, marginBottom: 16 }}>ID: {id}</p>
+      <div className="flex items-center justify-center min-h-screen bg-background px-6">
+        <div className="text-center">
+          <p className="text-base text-foreground mb-1">{msg}</p>
+          <p className="text-xs text-muted-foreground mb-4">ID: {id}</p>
           <button
             onClick={() => router.history.back()}
-            style={{ padding: "10px 20px", backgroundColor: c.green, color: "#fff", border: "none", borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: "pointer" }}
+            className="px-5 py-2 bg-primary text-primary-foreground font-semibold rounded-xl text-sm"
           >
             Go back
           </button>
@@ -214,7 +194,6 @@ function ListingDetail() {
   const l = listing as any;
   const landlordName = l.landlord?.full_name || "Landlord";
   const landlordInitial = landlordName.charAt(0).toUpperCase();
-  const hasActiveLease = false;
 
   const typeLabels: Record<string, string> = {
     studio: "Studio", single_room: "Single Room", self_contained: "Self-Contained",
@@ -222,112 +201,82 @@ function ListingDetail() {
   };
 
   return (
-    <div style={{ backgroundColor: c.bg, minHeight: "100vh", paddingBottom: "calc(72px + env(safe-area-inset-bottom))" }}>
-      
+    <div className="bg-background text-foreground min-h-screen pb-[calc(72px+env(safe-area-inset-bottom))]">
       {/* Photo Carousel */}
-      <div style={{ position: "relative", width: "100%", aspectRatio: "16/9", backgroundColor: "#E8E4DC" }}>
-        {/* Back & Save overlays */}
+      <div className="relative w-full aspect-video bg-muted">
         <button
           onClick={() => router.history.back()}
-          style={{
-            position: "absolute", top: 16, left: 16, zIndex: 10,
-            width: 36, height: 36, borderRadius: "50%",
-            backgroundColor: "rgba(0,0,0,0.45)", color: "#fff",
-            border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
-          }}
+          className="absolute top-4 left-4 z-10 w-9 h-9 rounded-full bg-black/45 text-white flex items-center justify-center hover:bg-black/60 transition-colors"
         >
           <ArrowLeft size={18} />
         </button>
         <button
           onClick={() => setIsSaved(!isSaved)}
-          style={{
-            position: "absolute", top: 16, right: 16, zIndex: 10,
-            width: 36, height: 36, borderRadius: "50%",
-            backgroundColor: "rgba(0,0,0,0.45)", color: "#fff",
-            border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
-          }}
+          className="absolute top-4 right-4 z-10 w-9 h-9 rounded-full bg-black/45 text-white flex items-center justify-center hover:bg-black/60 transition-colors"
         >
-          <Heart size={18} fill={isSaved ? "#D4A017" : "none"} color={isSaved ? "#D4A017" : "#fff"} />
+          <Heart size={18} fill={isSaved ? "#D4A017" : "none"} className={isSaved ? "text-amber-500" : "text-white"} />
         </button>
 
-        {/* Embla */}
-        <div style={{ overflow: "hidden", height: "100%" }} ref={emblaRef}>
-          <div style={{ display: "flex", height: "100%" }}>
+        <div className="overflow-hidden h-full" ref={emblaRef}>
+          <div className="flex h-full">
             {images.map((img: any, i: number) => (
-              <div key={i} style={{ flex: "0 0 100%", minWidth: 0, height: "100%", position: "relative" }}>
-                <img src={typeof img === "string" ? img : img.url} alt={`Photo ${i + 1}`} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              <div key={i} className="flex-[0_0_100%] min-w-0 h-full relative">
+                <img src={typeof img === "string" ? img : img.url} alt={`Photo ${i + 1}`} className="w-full h-full object-cover" />
               </div>
             ))}
           </div>
         </div>
 
-        {/* Photo count */}
-        <div style={{
-          position: "absolute", bottom: 12, left: "50%", transform: "translateX(-50%)",
-          backgroundColor: "rgba(0,0,0,0.55)", color: "#fff",
-          fontSize: 11, fontWeight: 600, padding: "3px 10px", borderRadius: 999,
-        }}>
+        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-black/55 text-white text-[11px] font-semibold px-2.5 py-0.5 rounded-full">
           {selectedIndex + 1} / {images.length}
         </div>
       </div>
 
       {/* Header Section */}
-      <div style={{ padding: "16px 16px 12px" }}>
-        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
-          <h1 style={{ fontSize: 20, fontWeight: 700, color: c.text, margin: 0, lineHeight: 1.3, flex: 1 }}>
+      <div className="p-4 pb-3">
+        <div className="flex items-start justify-between gap-2">
+          <h1 className="text-xl font-bold text-foreground leading-tight flex-1">
             {listing.title}
-            {(l.isVerified || l.verified) && <ShieldCheck size={16} color={c.amber} style={{ display: "inline", marginLeft: 6 }} />}
+            {(l.isVerified || l.verified) && <ShieldCheck size={16} className="inline ml-1.5 text-amber-500" />}
           </h1>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 6 }}>
-          <MapPin size={13} color={c.textFaint} />
-          <p style={{ fontSize: 13, color: c.textMuted, margin: 0 }}>
+        <div className="flex items-center gap-1 mt-1.5">
+          <MapPin size={13} className="text-muted-foreground shrink-0" />
+          <p className="text-[13px] text-muted-foreground">
             {listing.location?.displayAddress || "Buea"}
             {listing.distanceFromUbKm ? ` · ${listing.distanceFromUbKm}km from UB` : ""}
           </p>
         </div>
-        <div style={{ marginTop: 10 }}>
-          <span style={{ fontSize: 22, fontWeight: 700, color: c.green }}>
+        <div className="mt-2.5">
+          <span className="text-2xl font-bold text-primary">
             ₣{listing.rentAmount?.toLocaleString() ?? "—"}
           </span>
-          <span style={{ fontSize: 13, color: c.textMuted, marginLeft: 4 }}>/month</span>
+          <span className="text-[13px] text-muted-foreground ml-1">/month</span>
         </div>
       </div>
 
       {/* Landlord Trust Bar */}
-      <div style={{
-        margin: "0 16px 16px",
-        padding: "12px 14px",
-        backgroundColor: c.surface,
-        borderRadius: 12,
-        border: `0.5px solid ${c.border}`,
-        display: "flex", alignItems: "center", gap: 12,
-      }}>
-        <div style={{
-          width: 44, height: 44, borderRadius: "50%",
-          backgroundColor: c.green, color: "#fff",
-          display: "flex", alignItems: "center", justifyContent: "center",
-          fontSize: 18, fontWeight: 700, flexShrink: 0,
-        }}>
+      <div className="mx-4 mb-4 p-3 bg-card rounded-xl border border-border flex items-center gap-3">
+        <div className="w-11 h-11 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-lg font-bold shrink-0">
           {landlordInitial}
         </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: c.text, display: "flex", alignItems: "center", gap: 6 }}>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold text-foreground flex items-center gap-1.5">
             {landlordName}
-            {l.landlord?.isVerified && <ShieldCheck size={14} color={c.amber} />}
+            {l.landlord?.isVerified && <ShieldCheck size={14} className="text-amber-500" />}
           </p>
-          <p style={{ margin: "2px 0 0", fontSize: 12, color: c.textMuted }}>Landlord</p>
+          <p className="text-xs text-muted-foreground mt-0.5">Landlord</p>
         </div>
-        <div style={{ textAlign: "right" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 3, justifyContent: "flex-end", fontSize: 13, fontWeight: 600, color: c.text }}>
-            <Star size={12} color={c.amber} fill={c.amber} /> 4.8
+        <div className="text-right">
+          <div className="flex items-center justify-end gap-1 text-[13px] font-semibold text-foreground">
+            <Star size={12} className="text-amber-500 fill-amber-500" /> 4.8
           </div>
-          <p style={{ margin: "2px 0 0", fontSize: 11, color: c.textFaint }}>Replies in ~1 hr</p>
+          <p className="text-[11px] text-muted-foreground mt-0.5">Replies in ~1 hr</p>
         </div>
       </div>
 
       {/* Key Details Chips */}
-      <div style={{ display: "flex", gap: 8, overflowX: "auto", padding: "0 16px 16px", scrollbarWidth: "none" }}>
+      <div className="flex gap-2 overflow-x-auto px-4 pb-4 scrollbar-none">
         {l.bedrooms > 0 && (
           <DetailChip icon={<BedDouble size={13} />} label={`${l.bedrooms} Bedroom${l.bedrooms > 1 ? "s" : ""}`} />
         )}
@@ -338,21 +287,15 @@ function ListingDetail() {
       </div>
 
       {/* Description */}
-      <div style={{ padding: "0 16px 16px", borderTop: `0.5px solid ${c.border}`, paddingTop: 16 }}>
-        <h2 style={{ margin: "0 0 8px", fontSize: 13, fontWeight: 600, color: c.textMuted, textTransform: "uppercase", letterSpacing: 0.5 }}>About</h2>
-        <div style={{
-          fontSize: 14, color: c.textMuted, lineHeight: 1.6,
-          overflow: "hidden",
-          display: descExpanded ? "block" : "-webkit-box",
-          WebkitLineClamp: descExpanded ? undefined : 3,
-          WebkitBoxOrient: "vertical" as any,
-        }}>
+      <div className="px-4 pb-4 border-t border-border pt-4">
+        <h2 className="mb-2 text-[13px] font-semibold text-muted-foreground uppercase tracking-wide">About</h2>
+        <div className={cn("text-sm text-muted-foreground leading-relaxed", !descExpanded && "line-clamp-3")}>
           {listing.description || "No description provided for this listing."}
         </div>
         {!descExpanded && listing.description?.length > 120 && (
           <button
             onClick={() => setDescExpanded(true)}
-            style={{ marginTop: 6, fontSize: 13, fontWeight: 600, color: c.text, background: "none", border: "none", cursor: "pointer", padding: 0 }}
+            className="mt-1.5 text-[13px] font-semibold text-foreground hover:underline"
           >
             Read more
           </button>
@@ -361,16 +304,16 @@ function ListingDetail() {
 
       {/* Amenities */}
       {listing.amenities?.length > 0 && (
-        <div style={{ padding: "0 16px 16px", borderTop: `0.5px solid ${c.border}`, paddingTop: 16 }}>
-          <h2 style={{ margin: "0 0 12px", fontSize: 13, fontWeight: 600, color: c.textMuted, textTransform: "uppercase", letterSpacing: 0.5 }}>Amenities</h2>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px 16px" }}>
+        <div className="px-4 pb-4 border-t border-border pt-4">
+          <h2 className="mb-3 text-[13px] font-semibold text-muted-foreground uppercase tracking-wide">Amenities</h2>
+          <div className="grid grid-cols-2 gap-y-2.5 gap-x-4">
             {listing.amenities.map((a: string) => {
               const key = a.toLowerCase();
               const item = AMENITY_MAP[key];
               const Icon = item?.icon || CheckCircle;
               return (
-                <div key={a} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: c.text }}>
-                  <Icon size={15} color={c.textMuted} />
+                <div key={a} className="flex items-center gap-2 text-[13px] text-foreground">
+                  <Icon size={15} className="text-muted-foreground shrink-0" />
                   {item?.label || a}
                 </div>
               );
@@ -380,14 +323,14 @@ function ListingDetail() {
       )}
 
       {/* Map */}
-      <div style={{ padding: "0 16px 16px", borderTop: `0.5px solid ${c.border}`, paddingTop: 16 }}>
-        <h2 style={{ margin: "0 0 10px", fontSize: 13, fontWeight: 600, color: c.textMuted, textTransform: "uppercase", letterSpacing: 0.5 }}>Location</h2>
-        <div ref={mapContainer} style={{ width: "100%", height: 180, borderRadius: 12, backgroundColor: c.surface, overflow: "hidden" }} />
+      <div className="px-4 pb-4 border-t border-border pt-4">
+        <h2 className="mb-2.5 text-[13px] font-semibold text-muted-foreground uppercase tracking-wide">Location</h2>
+        <div ref={mapContainer} className="w-full h-[180px] rounded-xl bg-card overflow-hidden border border-border" />
         {(l.lat ?? l.location?.lat) && (l.lng ?? l.location?.lng) && (
           <a
             href={`https://www.google.com/maps?q=${l.lat ?? l.location?.lat},${l.lng ?? l.location?.lng}`}
             target="_blank" rel="noreferrer"
-            style={{ display: "inline-block", marginTop: 10, fontSize: 13, fontWeight: 600, color: c.green, textDecoration: "none" }}
+            className="inline-block mt-2.5 text-[13px] font-semibold text-primary hover:underline"
           >
             Open in Google Maps →
           </a>
@@ -395,62 +338,43 @@ function ListingDetail() {
       </div>
 
       {/* Reviews */}
-      <div style={{ padding: "0 16px 16px", borderTop: `0.5px solid ${c.border}`, paddingTop: 16 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-          <h2 style={{ margin: 0, fontSize: 13, fontWeight: 600, color: c.textMuted, textTransform: "uppercase", letterSpacing: 0.5 }}>Reviews</h2>
-          <div style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 13, fontWeight: 600, color: c.text }}>
-            <Star size={13} fill={c.amber} color={c.amber} /> 4.8 (12 reviews)
+      <div className="px-4 pb-4 border-t border-border pt-4">
+        <div className="flex justify-between items-center mb-3">
+          <h2 className="text-[13px] font-semibold text-muted-foreground uppercase tracking-wide">Reviews</h2>
+          <div className="flex items-center gap-1 text-[13px] font-semibold text-foreground">
+            <Star size={13} className="text-amber-500 fill-amber-500" /> 4.8 (12 reviews)
           </div>
         </div>
-        <div style={{ padding: "12px 0", borderBottom: `0.5px solid ${c.border}` }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-            <div style={{ width: 28, height: 28, borderRadius: "50%", backgroundColor: c.surface, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, color: c.text }}>E</div>
-            <p style={{ margin: 0, fontSize: 13, fontWeight: 600, flex: 1, color: c.text }}>Enow Emmanuel</p>
-            <p style={{ margin: 0, fontSize: 11, color: c.textFaint }}>Oct 2024</p>
+        <div className="py-3 border-b border-border">
+          <div className="flex items-center gap-2 mb-1.5">
+            <div className="w-7 h-7 rounded-full bg-muted flex items-center justify-center text-xs font-bold text-foreground">E</div>
+            <p className="text-[13px] font-semibold text-foreground flex-1">Enow Emmanuel</p>
+            <p className="text-[11px] text-muted-foreground">Oct 2024</p>
           </div>
-          <div style={{ display: "flex", gap: 2, marginBottom: 6 }}>
-            {[1,2,3,4,5].map(i => <Star key={i} size={11} fill={c.amber} color={c.amber} />)}
+          <div className="flex gap-0.5 mb-1.5">
+            {[1,2,3,4,5].map(i => <Star key={i} size={11} className="text-amber-500 fill-amber-500" />)}
           </div>
-          <p style={{ margin: 0, fontSize: 13, color: c.textMuted, lineHeight: 1.5 }}>
+          <p className="text-[13px] text-muted-foreground leading-relaxed">
             "Great place, very clean and close to campus. The landlord is responsive and helpful."
           </p>
         </div>
-        <button style={{
-          width: "100%", marginTop: 12, height: 40,
-          border: `0.5px solid ${c.border}`, borderRadius: 8,
-          fontSize: 13, fontWeight: 600, color: c.text,
-          backgroundColor: c.surface, cursor: "pointer"
-        }}>
+        <button className="w-full mt-3 h-10 border border-border rounded-lg text-[13px] font-semibold text-foreground bg-card hover:bg-muted/50 transition-colors">
           See all 12 reviews
         </button>
       </div>
 
       {/* Sticky Bottom Action Bar */}
-      <div style={{
-        position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 40,
-        backgroundColor: c.bg,
-        borderTop: `0.5px solid ${c.border}`,
-        padding: "12px 16px",
-        paddingBottom: "calc(12px + env(safe-area-inset-bottom))",
-      }}>
-        <div style={{ display: "flex", gap: 8 }}>
+      <div className="fixed bottom-0 left-0 right-0 z-40 bg-background/95 backdrop-blur border-t border-border p-3 pb-[calc(12px+env(safe-area-inset-bottom))]">
+        <div className="flex gap-2">
           <button
-            style={{
-              flex: 1, height: 48, borderRadius: 12,
-              backgroundColor: "#D4A017", color: "#FFFFFF",
-              fontSize: 15, fontWeight: 600, border: "none", cursor: "pointer",
-            }}
+            className="flex-1 h-12 rounded-xl bg-amber-500 text-white text-[15px] font-semibold hover:bg-amber-600 transition-colors"
             onClick={() => router.navigate({ to: "/payments/pay", search: { listingId: listing.id, leaseId: "", amount: listing.rentAmount || 0, listingTitle: listing.title || "" } })}
           >
             Pay Rent
           </button>
           <button
             onClick={() => setShowSchedule(true)}
-            style={{
-              flex: 1, height: 48, borderRadius: 12,
-              backgroundColor: "#1B4332", color: "#FFFFFF",
-              fontSize: 15, fontWeight: 600, border: "none", cursor: "pointer",
-            }}
+            className="flex-1 h-12 rounded-xl bg-primary text-primary-foreground text-[15px] font-semibold hover:bg-primary/90 transition-colors"
           >
             Visit
           </button>
@@ -460,13 +384,7 @@ function ListingDetail() {
               startChat.mutate();
             }}
             disabled={startChat.isPending}
-            style={{
-              width: 48, height: 48, borderRadius: 12,
-              backgroundColor: "#EAF4EE", color: "#1B4332",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              border: "0.5px solid #B7D9C4", cursor: "pointer", flexShrink: 0,
-              opacity: startChat.isPending ? 0.5 : 1,
-            }}
+            className="w-12 h-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center border border-primary/20 shrink-0 hover:bg-primary/20 transition-colors disabled:opacity-50"
           >
             <MessageSquare size={20} />
           </button>
@@ -478,36 +396,27 @@ function ListingDetail() {
         <>
           <div
             onClick={() => setShowSchedule(false)}
-            style={{
-              position: "fixed", inset: 0,
-              backgroundColor: "rgba(0,0,0,0.4)", zIndex: 50,
-            }}
+            className="fixed inset-0 bg-black/40 z-50 transition-opacity"
           />
-          <div style={{
-            position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 60,
-            backgroundColor: "#FFFFFF",
-            borderRadius: "20px 20px 0 0",
-            paddingBottom: "calc(24px + env(safe-area-inset-bottom))",
-            maxHeight: "80vh", overflowY: "auto",
-          }}>
+          <div className="fixed bottom-0 left-0 right-0 z-[60] bg-background rounded-t-[20px] pb-[calc(24px+env(safe-area-inset-bottom))] max-h-[80vh] overflow-y-auto">
             {/* Drag Handle */}
-            <div style={{ display: "flex", justifyContent: "center", padding: "12px 0 0" }}>
-              <div style={{ width: 36, height: 4, backgroundColor: "#D4D0C8", borderRadius: 999 }} />
+            <div className="flex justify-center pt-3">
+              <div className="w-9 h-1 bg-muted-foreground/30 rounded-full" />
             </div>
 
-            <div style={{ padding: "16px 20px 0" }}>
-              <h3 style={{ margin: "0 0 4px", fontSize: 18, fontWeight: 700, color: "#1A1A18" }}>Schedule a visit</h3>
-              <p style={{ margin: "0 0 20px", fontSize: 13, color: "#6B6B68" }}>{listing.title}</p>
+            <div className="p-4 px-5">
+              <h3 className="text-lg font-bold text-foreground mb-1">Schedule a visit</h3>
+              <p className="text-[13px] text-muted-foreground mb-5">{listing.title}</p>
 
               {availableDates.length === 0 ? (
-                <div style={{ textAlign: "center", padding: "32px 0", color: "#6B6B68", fontSize: 14 }}>
+                <div className="text-center py-8 text-sm text-muted-foreground">
                   No available slots right now.<br />
-                  <strong style={{ color: "#1A1A18" }}>Message the landlord</strong> to arrange a time.
+                  <strong className="text-foreground font-semibold">Message the landlord</strong> to arrange a time.
                 </div>
               ) : (
                 <>
                   {/* Date Picker */}
-                  <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 16, scrollbarWidth: "none", margin: "0 -20px", padding: "0 20px 16px" }}>
+                  <div className="flex gap-2 overflow-x-auto pb-4 scrollbar-none -mx-5 px-5">
                     {availableDates.map(dateStr => {
                       const d = new Date(dateStr);
                       const isSelected = selectedDate === dateStr;
@@ -515,21 +424,17 @@ function ListingDetail() {
                         <button
                           key={dateStr}
                           onClick={() => { setSelectedDate(dateStr); setSelectedSlot(null); }}
-                          style={{
-                            flexShrink: 0,
-                            width: 56, height: 68,
-                            borderRadius: 12,
-                            border: isSelected ? "none" : "0.5px solid #E8E4DC",
-                            backgroundColor: isSelected ? "#1B4332" : "#F9F7F2",
-                            color: isSelected ? "#FFFFFF" : "#1A1A18",
-                            cursor: "pointer", fontSize: 13,
-                            display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2,
-                          }}
+                          className={cn(
+                            "shrink-0 w-14 h-16 rounded-xl border flex flex-col items-center justify-center gap-0.5 transition-colors",
+                            isSelected
+                              ? "bg-primary border-primary text-primary-foreground"
+                              : "bg-card border-border text-foreground hover:border-primary/50"
+                          )}
                         >
-                          <span style={{ fontSize: 10, fontWeight: 600, opacity: 0.8, textTransform: "uppercase" }}>
+                          <span className="text-[10px] font-semibold uppercase opacity-80">
                             {d.toLocaleDateString("en-GB", { weekday: "short" })}
                           </span>
-                          <span style={{ fontSize: 18, fontWeight: 700 }}>{d.getDate()}</span>
+                          <span className="text-lg font-bold">{d.getDate()}</span>
                         </button>
                       );
                     })}
@@ -538,8 +443,8 @@ function ListingDetail() {
                   {/* Time Slots */}
                   {selectedDate && (
                     <>
-                      <p style={{ fontSize: 13, fontWeight: 500, color: "#6B6B68", margin: "0 0 10px" }}>Available times</p>
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 20, maxHeight: "30vh", overflowY: "auto" }}>
+                      <p className="text-[13px] font-medium text-muted-foreground mb-2.5">Available times</p>
+                      <div className="grid grid-cols-2 gap-2.5 mb-5 max-h-[30vh] overflow-y-auto pr-1">
                         {groupedSlots[selectedDate].map((slot: any) => {
                           const d = new Date(slot.slot_datetime);
                           const isSelected = selectedSlot === slot.id;
@@ -549,14 +454,14 @@ function ListingDetail() {
                               key={slot.id}
                               disabled={isBooked}
                               onClick={() => setSelectedSlot(slot.id)}
-                              style={{
-                                height: 42, borderRadius: 10, fontSize: 13, fontWeight: 600,
-                                border: isSelected ? "none" : "0.5px solid #E8E4DC",
-                                backgroundColor: isBooked ? "#F9F7F2" : isSelected ? "#1B4332" : "#F9F7F2",
-                                color: isBooked ? "#A8A8A5" : isSelected ? "#FFFFFF" : "#1A1A18",
-                                opacity: isBooked ? 0.4 : 1,
-                                cursor: isBooked ? "not-allowed" : "pointer",
-                              }}
+                              className={cn(
+                                "h-10 rounded-lg text-[13px] font-semibold border transition-colors",
+                                isBooked
+                                  ? "bg-muted border-transparent text-muted-foreground opacity-50 cursor-not-allowed"
+                                  : isSelected
+                                    ? "bg-primary border-primary text-primary-foreground"
+                                    : "bg-card border-border text-foreground hover:border-primary/50"
+                              )}
                             >
                               {d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
                             </button>
@@ -567,13 +472,7 @@ function ListingDetail() {
                   )}
 
                   <button
-                    style={{
-                      width: "100%", height: 48, borderRadius: 12,
-                      backgroundColor: selectedDate && selectedSlot ? "#1B4332" : "#E8E4DC",
-                      color: selectedDate && selectedSlot ? "#FFFFFF" : "#A8A8A5",
-                      fontSize: 15, fontWeight: 600, border: "none",
-                      cursor: selectedDate && selectedSlot ? "pointer" : "not-allowed",
-                    }}
+                    className="w-full h-12 rounded-xl text-[15px] font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed bg-primary text-primary-foreground hover:bg-primary/90"
                     disabled={!selectedDate || !selectedSlot || bookSlot.isPending}
                     onClick={() => { if (selectedSlot) bookSlot.mutate(selectedSlot); }}
                   >
@@ -591,15 +490,8 @@ function ListingDetail() {
 
 function DetailChip({ icon, label }: { icon: React.ReactNode; label: string }) {
   return (
-    <div style={{
-      flexShrink: 0,
-      display: "flex", alignItems: "center", gap: 6,
-      backgroundColor: "#F9F7F2",
-      border: "0.5px solid #E8E4DC",
-      borderRadius: 8, padding: "6px 12px",
-      fontSize: 12, color: "#1A1A18",
-    }}>
-      {icon}
+    <div className="shrink-0 flex items-center gap-1.5 bg-card border border-border rounded-lg px-3 py-1.5 text-xs text-foreground font-medium">
+      {icon && <span className="text-muted-foreground">{icon}</span>}
       {label}
     </div>
   );

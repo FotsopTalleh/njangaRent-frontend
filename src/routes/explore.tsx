@@ -42,7 +42,7 @@ function ExplorePage() {
   });
 
   const rawListings: any[] = listingsData || [];
-  const listings = isError && rawListings.length === 0
+  const listings = rawListings.length === 0
     ? (() => {
         const dummyParams: any = { limit: 100 };
         const mapped = FILTER_MAP[activeFilter];
