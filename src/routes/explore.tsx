@@ -1,12 +1,10 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Bell, Heart, Home, BedDouble, Bath, Wifi, ImageIcon, MapPin, LayoutDashboard } from "lucide-react";
+import { Bell, Heart, Home, BedDouble, Bath, Wifi, ImageIcon, MapPin, LayoutDashboard, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { axiosClient } from "@/api/axiosClient";
 import { useAuthStore } from "@/store/authStore";
 import { dashboardForRole } from "@/store/authStore";
-
 import { paginateDummyListings } from "@/data/dummyListings";
 
 export const Route = createFileRoute("/explore")({
@@ -37,19 +35,13 @@ function ExplorePage() {
     queryFn: async () => {
       const { supabaseListings } = await import("@/lib/supabase");
       const mapped = FILTER_MAP[activeFilter];
-      return supabaseListings.browse({
-        limit: 100,
-        propertyType: mapped,
-      });
+      return supabaseListings.browse({ limit: 100, propertyType: mapped });
     },
-    staleTime: 2 * 60 * 1000, // Refresh more often (2 min)
+    staleTime: 2 * 60 * 1000,
     retry: 2,
   });
 
-  // Since supabaseListings.browse already returns the normalized array:
   const rawListings: any[] = listingsData || [];
-
-  // Only fall back to dummy data when the backend actually errors (not just empty results)
   const listings = isError && rawListings.length === 0
     ? (() => {
         const dummyParams: any = { limit: 100 };
@@ -60,83 +52,47 @@ function ExplorePage() {
     : rawListings;
 
   return (
-    <div style={{ backgroundColor: "#F9F7F2", minHeight: "100vh", paddingBottom: "calc(56px + env(safe-area-inset-bottom))" }}>
-      
-      {/* Unified Sticky Header */}
-      <div style={{
-        position: "sticky", top: 0, zIndex: 20,
-        backgroundColor: "#F9F7F2",
-        borderBottom: "1px solid #E8E4DC",
-        boxShadow: "0 2px 10px rgba(0,0,0,0.03)",
-        paddingTop: "max(12px, env(safe-area-inset-top))"
-      }}>
+    <div className="min-h-screen bg-background text-foreground pb-[calc(56px+env(safe-area-inset-bottom))]">
+
+      {/* Sticky Header */}
+      <div className="sticky top-0 z-20 bg-background border-b border-border shadow-sm pt-[max(12px,env(safe-area-inset-top))]">
         {/* Top row */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 16px" }}>
+        <div className="flex items-center justify-between px-4 pb-2">
           <div>
-            <h1 style={{ fontSize: 22, fontWeight: 800, color: "#1B4332", lineHeight: 1.2, letterSpacing: "-0.5px" }}>NjangaRent</h1>
-            <p style={{ fontSize: 13, color: "#6B6B68", marginTop: 2, fontWeight: 500 }}>Find your home in Buea</p>
+            <h1 className="text-xl font-extrabold text-primary leading-tight tracking-tight">NjangaRent</h1>
+            <p className="text-xs text-muted-foreground mt-0.5 font-medium">Find your home in Buea</p>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            {/* Dashboard shortcut */}
+          <div className="flex items-center gap-2">
             <Link
               to={dashboardTo}
-              style={{
-                display: "flex", alignItems: "center", gap: 6,
-                padding: "7px 14px",
-                borderRadius: 10,
-                backgroundColor: "#1B4332",
-                color: "#FFFFFF",
-                fontSize: 13, fontWeight: 600,
-                textDecoration: "none",
-                border: "none", cursor: "pointer",
-                whiteSpace: "nowrap",
-              }}
-              aria-label="Go to dashboard"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary text-primary-foreground text-xs font-semibold"
             >
-              <LayoutDashboard size={14} />
+              <LayoutDashboard size={13} />
               Dashboard
             </Link>
-            {/* Notifications */}
             <button
               onClick={() => navigate({ to: user ? "/tenant/notifications" : "/login" })}
-              style={{ position: "relative", padding: 8, borderRadius: "50%", backgroundColor: "#FFFFFF", border: "0.5px solid #E8E4DC", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+              className="relative p-2 rounded-full bg-card border border-border"
               aria-label="Notifications"
             >
-              <Bell size={20} color="#1A1A18" />
-              <span style={{
-                position: "absolute", top: 6, right: 8,
-                width: 8, height: 8, borderRadius: 999,
-                backgroundColor: "#D4A017",
-                border: "2px solid #FFFFFF"
-              }} />
+              <Bell size={18} className="text-foreground" />
+              <span className="absolute top-1.5 right-2 w-2 h-2 rounded-full bg-amber-400 border-2 border-background" />
             </button>
           </div>
         </div>
 
         {/* Filter Chip Bar */}
-        <div style={{
-          display: "flex", gap: 8, overflowX: "auto",
-          padding: "16px 16px 12px", scrollbarWidth: "none",
-          WebkitOverflowScrolling: "touch",
-        }}>
+        <div className="flex gap-2 overflow-x-auto px-4 pb-3 scrollbar-none">
           {FILTERS.map(f => (
             <button
               key={f}
               onClick={() => setActiveFilter(f)}
-              style={{
-                flexShrink: 0,
-                height: 36,
-                padding: "0 16px",
-                borderRadius: 999,
-                fontSize: 13,
-                fontWeight: 600,
-                cursor: "pointer",
-                border: activeFilter === f ? "none" : "1px solid #E8E4DC",
-                backgroundColor: activeFilter === f ? "#1B4332" : "#FFFFFF",
-                color: activeFilter === f ? "#FFFFFF" : "#1A1A18",
-                transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
-                boxShadow: activeFilter === f ? "0 2px 8px rgba(27, 67, 50, 0.25)" : "none",
-              }}
+              className={cn(
+                "shrink-0 h-9 px-4 rounded-full text-xs font-semibold border transition-all",
+                activeFilter === f
+                  ? "bg-primary text-primary-foreground border-primary shadow-md"
+                  : "bg-card text-foreground border-border hover:border-primary/50"
+              )}
             >
               {f}
             </button>
@@ -146,42 +102,31 @@ function ExplorePage() {
 
       {/* Listing Count */}
       {!isLoading && listings.length > 0 && (
-        <div style={{ padding: "0 16px 8px", fontSize: 12, color: "#6B6B68" }}>
+        <div className="px-4 py-2 text-xs text-muted-foreground">
           {listings.length} listing{listings.length !== 1 ? "s" : ""} in Buea
         </div>
       )}
 
       {/* Listing Feed */}
-      <div style={{ paddingTop: 4 }}>
+      <div className="pt-1">
         {isLoading ? (
           Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} style={{
-              backgroundColor: "#FFFFFF",
-              borderRadius: 16,
-              overflow: "hidden",
-              border: "0.5px solid #E8E4DC",
-              margin: "0 16px 16px",
-              boxShadow: "0 1px 4px rgba(0,0,0,0.06)"
-            }}>
-              <div style={{ width: "100%", aspectRatio: "16/9", backgroundColor: "#E8E4DC", animation: "pulse 1.5s infinite" }} />
-              <div style={{ padding: 12 }}>
-                <div style={{ height: 18, backgroundColor: "#E8E4DC", borderRadius: 6, width: "65%", marginBottom: 8 }} />
-                <div style={{ height: 14, backgroundColor: "#E8E4DC", borderRadius: 6, width: "40%", marginBottom: 12 }} />
-                <div style={{ height: 22, backgroundColor: "#E8E4DC", borderRadius: 6, width: "45%" }} />
+            <div key={i} className="mx-4 mb-4 rounded-2xl border border-border bg-card overflow-hidden animate-pulse">
+              <div className="w-full aspect-video bg-muted" />
+              <div className="p-3 space-y-2">
+                <div className="h-4 bg-muted rounded w-2/3" />
+                <div className="h-3 bg-muted rounded w-2/5" />
+                <div className="h-5 bg-muted rounded w-1/3" />
               </div>
             </div>
           ))
         ) : listings.length === 0 ? (
-          <div style={{ textAlign: "center", padding: "80px 24px 24px", display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
-            <div style={{
-              width: 88, height: 88, borderRadius: 999,
-              backgroundColor: "#EAF4EE",
-              display: "flex", alignItems: "center", justifyContent: "center"
-            }}>
-              <Home size={36} color="#B7D9C4" />
+          <div className="flex flex-col items-center justify-center gap-4 py-20 px-6 text-center">
+            <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center">
+              <Home size={32} className="text-primary/40" />
             </div>
-            <p style={{ fontSize: 15, color: "#6B6B68", fontWeight: 500 }}>No listings found.</p>
-            <p style={{ fontSize: 13, color: "#A8A8A5" }}>Try a different filter</p>
+            <p className="text-sm text-muted-foreground font-medium">No listings found.</p>
+            <p className="text-xs text-muted-foreground">Try a different filter</p>
           </div>
         ) : (
           listings.map((listing: any) => (
@@ -220,7 +165,6 @@ function ListingCard({
   const isAvailable = listing.status === "active" || !listing.status;
   const isVerified = listing.isVerified || listing.verified;
 
-  // Property type label
   const typeLabels: Record<string, string> = {
     studio: "Studio", single_room: "Room", self_contained: "Self-Contained",
     apartment: "Apartment", furnished: "Furnished"
@@ -230,77 +174,42 @@ function ListingCard({
   return (
     <div
       onClick={() => navigate({ to: "/listing/$id", params: { id: listing.id } })}
-      style={{
-        backgroundColor: "#FFFFFF",
-        borderRadius: 16,
-        overflow: "hidden",
-        border: "0.5px solid #E8E4DC",
-        margin: "0 16px 16px",
-        cursor: "pointer",
-        boxShadow: "0 1px 6px rgba(0,0,0,0.06)",
-        transition: "transform 0.15s ease, box-shadow 0.15s ease",
-        WebkitTapHighlightColor: "transparent",
-      }}
-      onMouseDown={e => (e.currentTarget.style.transform = "scale(0.98)")}
-      onMouseUp={e => (e.currentTarget.style.transform = "scale(1)")}
-      onTouchStart={e => (e.currentTarget.style.transform = "scale(0.98)")}
-      onTouchEnd={e => (e.currentTarget.style.transform = "scale(1)")}
+      className="mx-4 mb-4 rounded-2xl border border-border bg-card overflow-hidden cursor-pointer shadow-sm active:scale-[0.98] transition-transform"
     >
       {/* Photo */}
-      <div style={{ position: "relative", width: "100%", aspectRatio: "16/9", backgroundColor: "#EAF4EE" }}>
+      <div className="relative w-full aspect-video bg-primary/5">
         {coverUrl ? (
-          <img src={coverUrl} alt={listing.title} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} loading="lazy" />
+          <img src={coverUrl} alt={listing.title} className="w-full h-full object-cover" loading="lazy" />
         ) : (
-          <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 8 }}>
-            <Home size={32} color="#B7D9C4" />
-            <span style={{ fontSize: 11, color: "#B7D9C4" }}>No photo yet</span>
+          <div className="w-full h-full flex flex-col items-center justify-center gap-2">
+            <Home size={32} className="text-primary/30" />
+            <span className="text-[11px] text-muted-foreground">No photo yet</span>
           </div>
         )}
 
-        {/* Verified Badge */}
         {isVerified && (
-          <div style={{
-            position: "absolute", top: 10, right: 10,
-            backgroundColor: "#D4A017", color: "#FFFFFF",
-            fontSize: 10, fontWeight: 700,
-            padding: "3px 8px", borderRadius: 8
-          }}>
+          <div className="absolute top-2.5 right-2.5 bg-amber-400 text-white text-[10px] font-bold px-2 py-0.5 rounded-lg">
             ✓ Verified
           </div>
         )}
-
-        {/* Photo Count Pill */}
         {photoCount > 1 && (
-          <div style={{
-            position: "absolute", bottom: 10, left: 10,
-            backgroundColor: "rgba(0,0,0,0.55)", color: "#FFFFFF",
-            fontSize: 10, padding: "2px 8px", borderRadius: 8,
-            display: "flex", alignItems: "center", gap: 4
-          }}>
+          <div className="absolute bottom-2.5 left-2.5 bg-black/55 text-white text-[10px] px-2 py-0.5 rounded-lg flex items-center gap-1">
             <ImageIcon size={10} /> {photoCount} photos
           </div>
         )}
-
-        {/* Type label */}
-        <div style={{
-          position: "absolute", bottom: 10, right: 10,
-          backgroundColor: "rgba(0,0,0,0.45)", color: "#FFFFFF",
-          fontSize: 10, fontWeight: 600, padding: "2px 8px", borderRadius: 8
-        }}>
+        <div className="absolute bottom-2.5 right-2.5 bg-black/45 text-white text-[10px] font-semibold px-2 py-0.5 rounded-lg">
           {typeLabel}
         </div>
       </div>
 
       {/* Card Body */}
-      <div style={{ padding: 12 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
-          <div style={{ minWidth: 0, flex: 1 }}>
-            <h3 style={{ fontSize: 15, fontWeight: 600, color: "#1A1A18", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              {listing.title}
-            </h3>
-            <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 3 }}>
-              <MapPin size={11} color="#A8A8A5" />
-              <p style={{ fontSize: 12, color: "#6B6B68", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+      <div className="p-3">
+        <div className="flex justify-between items-start gap-2">
+          <div className="min-w-0 flex-1">
+            <h3 className="text-sm font-semibold text-foreground truncate">{listing.title}</h3>
+            <div className="flex items-center gap-1 mt-0.5">
+              <MapPin size={11} className="text-muted-foreground shrink-0" />
+              <p className="text-xs text-muted-foreground truncate">
                 {listing.location?.displayAddress || "Buea"}
                 {listing.distanceFromUbKm ? ` · ${listing.distanceFromUbKm}km from UB` : ""}
               </p>
@@ -308,38 +217,35 @@ function ListingCard({
           </div>
           <button
             onClick={e => { e.stopPropagation(); onToggleSave(listing.id); }}
-            style={{ padding: 4, border: "none", background: "none", cursor: "pointer", flexShrink: 0 }}
+            className="p-1 shrink-0"
             aria-label="Save listing"
           >
             <Heart
               size={18}
-              color={isSaved ? "#D4A017" : "#A8A8A5"}
+              color={isSaved ? "#D4A017" : undefined}
               fill={isSaved ? "#D4A017" : "none"}
+              className={isSaved ? "" : "text-muted-foreground"}
             />
           </button>
         </div>
 
-        {/* Price row */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 8 }}>
+        {/* Price + availability */}
+        <div className="flex items-center justify-between mt-2">
           <div>
-            <span style={{ fontSize: 18, fontWeight: 700, color: "#1B4332" }}>
+            <span className="text-base font-bold text-primary">
               ₣{listing.rentAmount?.toLocaleString() ?? "—"}
             </span>
-            <span style={{ fontSize: 12, color: "#6B6B68", marginLeft: 4 }}>/month</span>
+            <span className="text-xs text-muted-foreground ml-1">/month</span>
           </div>
           {isAvailable && (
-            <span style={{
-              backgroundColor: "#EAF4EE", color: "#1B4332",
-              fontSize: 10, fontWeight: 600,
-              padding: "2px 8px", borderRadius: 6
-            }}>
+            <span className="text-[10px] font-semibold bg-primary/10 text-primary px-2 py-0.5 rounded-md">
               Available
             </span>
           )}
         </div>
 
         {/* Amenity Chips */}
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
+        <div className="flex flex-wrap gap-1.5 mt-2">
           {listing.bedrooms > 0 && (
             <Chip icon={<BedDouble size={10} />} label={`${listing.bedrooms} Bed`} />
           )}
@@ -355,14 +261,7 @@ function ListingCard({
 
 function Chip({ icon, label }: { icon: React.ReactNode; label: string }) {
   return (
-    <div style={{
-      display: "flex", alignItems: "center", gap: 4,
-      backgroundColor: "#F9F7F2",
-      border: "0.5px solid #E8E4DC",
-      color: "#6B6B68",
-      fontSize: 10, fontWeight: 500,
-      padding: "3px 7px", borderRadius: 6,
-    }}>
+    <div className="flex items-center gap-1 bg-muted text-muted-foreground text-[10px] font-medium px-2 py-0.5 rounded-md border border-border">
       {icon}
       {label}
     </div>

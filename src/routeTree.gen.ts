@@ -35,7 +35,9 @@ import { Route as TenantTenantReceiptsRouteImport } from './routes/_tenant.tenan
 import { Route as TenantTenantPaymentsRouteImport } from './routes/_tenant.tenant.payments'
 import { Route as TenantTenantNotificationsRouteImport } from './routes/_tenant.tenant.notifications'
 import { Route as TenantTenantDashboardRouteImport } from './routes/_tenant.tenant.dashboard'
+import { Route as StudentStudentReceiptsRouteImport } from './routes/_student.student.receipts'
 import { Route as StudentStudentPaymentsRouteImport } from './routes/_student.student.payments'
+import { Route as StudentStudentNotificationsRouteImport } from './routes/_student.student.notifications'
 import { Route as StudentStudentInboxRouteImport } from './routes/_student.student.inbox'
 import { Route as StudentStudentDashboardRouteImport } from './routes/_student.student.dashboard'
 import { Route as StudentStudentAppointmentsRouteImport } from './routes/_student.student.appointments'
@@ -188,11 +190,22 @@ const TenantTenantDashboardRoute = TenantTenantDashboardRouteImport.update({
   path: '/tenant/dashboard',
   getParentRoute: () => TenantRoute,
 } as any)
+const StudentStudentReceiptsRoute = StudentStudentReceiptsRouteImport.update({
+  id: '/student/receipts',
+  path: '/student/receipts',
+  getParentRoute: () => StudentRoute,
+} as any)
 const StudentStudentPaymentsRoute = StudentStudentPaymentsRouteImport.update({
   id: '/student/payments',
   path: '/student/payments',
   getParentRoute: () => StudentRoute,
 } as any)
+const StudentStudentNotificationsRoute =
+  StudentStudentNotificationsRouteImport.update({
+    id: '/student/notifications',
+    path: '/student/notifications',
+    getParentRoute: () => StudentRoute,
+  } as any)
 const StudentStudentInboxRoute = StudentStudentInboxRouteImport.update({
   id: '/student/inbox',
   path: '/student/inbox',
@@ -356,7 +369,9 @@ export interface FileRoutesByFullPath {
   '/student/appointments': typeof StudentStudentAppointmentsRoute
   '/student/dashboard': typeof StudentStudentDashboardRoute
   '/student/inbox': typeof StudentStudentInboxRoute
+  '/student/notifications': typeof StudentStudentNotificationsRoute
   '/student/payments': typeof StudentStudentPaymentsRoute
+  '/student/receipts': typeof StudentStudentReceiptsRoute
   '/tenant/dashboard': typeof TenantTenantDashboardRoute
   '/tenant/notifications': typeof TenantTenantNotificationsRoute
   '/tenant/payments': typeof TenantTenantPaymentsRoute
@@ -404,7 +419,9 @@ export interface FileRoutesByTo {
   '/student/appointments': typeof StudentStudentAppointmentsRoute
   '/student/dashboard': typeof StudentStudentDashboardRoute
   '/student/inbox': typeof StudentStudentInboxRoute
+  '/student/notifications': typeof StudentStudentNotificationsRoute
   '/student/payments': typeof StudentStudentPaymentsRoute
+  '/student/receipts': typeof StudentStudentReceiptsRoute
   '/tenant/dashboard': typeof TenantTenantDashboardRoute
   '/tenant/notifications': typeof TenantTenantNotificationsRoute
   '/tenant/payments': typeof TenantTenantPaymentsRoute
@@ -457,7 +474,9 @@ export interface FileRoutesById {
   '/_student/student/appointments': typeof StudentStudentAppointmentsRoute
   '/_student/student/dashboard': typeof StudentStudentDashboardRoute
   '/_student/student/inbox': typeof StudentStudentInboxRoute
+  '/_student/student/notifications': typeof StudentStudentNotificationsRoute
   '/_student/student/payments': typeof StudentStudentPaymentsRoute
+  '/_student/student/receipts': typeof StudentStudentReceiptsRoute
   '/_tenant/tenant/dashboard': typeof TenantTenantDashboardRoute
   '/_tenant/tenant/notifications': typeof TenantTenantNotificationsRoute
   '/_tenant/tenant/payments': typeof TenantTenantPaymentsRoute
@@ -507,7 +526,9 @@ export interface FileRouteTypes {
     | '/student/appointments'
     | '/student/dashboard'
     | '/student/inbox'
+    | '/student/notifications'
     | '/student/payments'
+    | '/student/receipts'
     | '/tenant/dashboard'
     | '/tenant/notifications'
     | '/tenant/payments'
@@ -555,7 +576,9 @@ export interface FileRouteTypes {
     | '/student/appointments'
     | '/student/dashboard'
     | '/student/inbox'
+    | '/student/notifications'
     | '/student/payments'
+    | '/student/receipts'
     | '/tenant/dashboard'
     | '/tenant/notifications'
     | '/tenant/payments'
@@ -607,7 +630,9 @@ export interface FileRouteTypes {
     | '/_student/student/appointments'
     | '/_student/student/dashboard'
     | '/_student/student/inbox'
+    | '/_student/student/notifications'
     | '/_student/student/payments'
+    | '/_student/student/receipts'
     | '/_tenant/tenant/dashboard'
     | '/_tenant/tenant/notifications'
     | '/_tenant/tenant/payments'
@@ -829,11 +854,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TenantTenantDashboardRouteImport
       parentRoute: typeof TenantRoute
     }
+    '/_student/student/receipts': {
+      id: '/_student/student/receipts'
+      path: '/student/receipts'
+      fullPath: '/student/receipts'
+      preLoaderRoute: typeof StudentStudentReceiptsRouteImport
+      parentRoute: typeof StudentRoute
+    }
     '/_student/student/payments': {
       id: '/_student/student/payments'
       path: '/student/payments'
       fullPath: '/student/payments'
       preLoaderRoute: typeof StudentStudentPaymentsRouteImport
+      parentRoute: typeof StudentRoute
+    }
+    '/_student/student/notifications': {
+      id: '/_student/student/notifications'
+      path: '/student/notifications'
+      fullPath: '/student/notifications'
+      preLoaderRoute: typeof StudentStudentNotificationsRouteImport
       parentRoute: typeof StudentRoute
     }
     '/_student/student/inbox': {
@@ -1060,7 +1099,9 @@ interface StudentRouteChildren {
   StudentStudentAppointmentsRoute: typeof StudentStudentAppointmentsRoute
   StudentStudentDashboardRoute: typeof StudentStudentDashboardRoute
   StudentStudentInboxRoute: typeof StudentStudentInboxRoute
+  StudentStudentNotificationsRoute: typeof StudentStudentNotificationsRoute
   StudentStudentPaymentsRoute: typeof StudentStudentPaymentsRoute
+  StudentStudentReceiptsRoute: typeof StudentStudentReceiptsRoute
   StudentStudentListingsSavedRoute: typeof StudentStudentListingsSavedRoute
 }
 
@@ -1068,7 +1109,9 @@ const StudentRouteChildren: StudentRouteChildren = {
   StudentStudentAppointmentsRoute: StudentStudentAppointmentsRoute,
   StudentStudentDashboardRoute: StudentStudentDashboardRoute,
   StudentStudentInboxRoute: StudentStudentInboxRoute,
+  StudentStudentNotificationsRoute: StudentStudentNotificationsRoute,
   StudentStudentPaymentsRoute: StudentStudentPaymentsRoute,
+  StudentStudentReceiptsRoute: StudentStudentReceiptsRoute,
   StudentStudentListingsSavedRoute: StudentStudentListingsSavedRoute,
 }
 

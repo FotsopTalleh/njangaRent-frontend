@@ -1,11 +1,13 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { Search as SearchIcon, ArrowLeft } from "lucide-react";
+import { Search as SearchIcon, ArrowLeft, MapPin } from "lucide-react";
 
 export const Route = createFileRoute("/search")({
   head: () => ({ meta: [{ title: "Search — NjangaRent" }] }),
   component: SearchPage,
 });
+
+const POPULAR_AREAS = ["Molyko", "Bomaka", "Dirty South", "Muea", "Clarks Quarters", "Bokova"];
 
 function SearchPage() {
   const navigate = useNavigate();
@@ -13,60 +15,50 @@ function SearchPage() {
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    if (query.trim()) {
-      // You can pass the query to explore, or implement search locally here.
-      // For now, we just redirect to explore which acts as the main feed.
-      navigate({ to: "/explore" });
-    }
+    navigate({ to: "/explore" });
   };
 
   return (
-    <div style={{ backgroundColor: "#FFFFFF", minHeight: "100vh" }}>
+    <div className="min-h-screen bg-background text-foreground">
       {/* Search Header */}
-      <div style={{
-        position: "sticky", top: 0, zIndex: 10,
-        backgroundColor: "#FFFFFF",
-        borderBottom: "0.5px solid #E8E4DC",
-        padding: "12px 16px",
-        paddingTop: "max(12px, env(safe-area-inset-top))",
-        display: "flex", alignItems: "center", gap: 12
-      }}>
+      <div className="sticky top-0 z-10 bg-background border-b border-border px-4 py-3 pt-[max(12px,env(safe-area-inset-top))] flex items-center gap-3">
         <button
           onClick={() => navigate({ to: "/explore" })}
-          style={{ background: "none", border: "none", cursor: "pointer", padding: 4, borderRadius: 8 }}
+          className="p-1.5 rounded-lg hover:bg-muted transition-colors"
+          aria-label="Go back"
         >
-          <ArrowLeft size={22} color="#1A1A18" />
+          <ArrowLeft size={22} className="text-foreground" />
         </button>
-        
-        <form onSubmit={handleSearch} style={{ flex: 1, display: "flex", alignItems: "center", backgroundColor: "#F9F7F2", borderRadius: 12, padding: "8px 12px", border: "0.5px solid #E8E4DC" }}>
-          <SearchIcon size={18} color="#A8A8A5" style={{ marginRight: 8 }} />
+
+        <form onSubmit={handleSearch} className="flex-1 flex items-center bg-muted rounded-xl px-3 py-2 gap-2 border border-border">
+          <SearchIcon size={16} className="text-muted-foreground shrink-0" />
           <input
             autoFocus
             type="text"
             placeholder="Search by location, university..."
             value={query}
             onChange={e => setQuery(e.target.value)}
-            style={{ flex: 1, background: "transparent", border: "none", outline: "none", fontSize: 15, color: "#1A1A18" }}
+            className="flex-1 bg-transparent border-none outline-none text-sm text-foreground placeholder:text-muted-foreground"
           />
         </form>
       </div>
 
-      {/* Suggested / Recent Searches */}
-      <div style={{ padding: "24px 16px" }}>
-        <h3 style={{ fontSize: 13, fontWeight: 600, color: "#6B6B68", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 12 }}>
+      {/* Suggested Areas */}
+      <div className="px-4 pt-6">
+        <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
           Popular areas
         </h3>
-        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          {["Molyko", "Bomaka", "Dirty South", "Muea", "Clarks Quarters"].map(area => (
+        <div className="flex flex-col gap-0 divide-y divide-border rounded-xl border border-border overflow-hidden bg-card">
+          {POPULAR_AREAS.map(area => (
             <button
               key={area}
-              onClick={() => { setQuery(area); setTimeout(() => navigate({ to: "/explore" }), 150); }}
-              style={{ display: "flex", alignItems: "center", gap: 12, background: "none", border: "none", cursor: "pointer", padding: 0, textAlign: "left" }}
+              onClick={() => navigate({ to: "/explore" })}
+              className="flex items-center gap-3 px-4 py-3.5 hover:bg-muted/50 transition-colors text-left"
             >
-              <div style={{ width: 40, height: 40, borderRadius: "50%", backgroundColor: "#F9F7F2", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <SearchIcon size={18} color="#1B4332" />
+              <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                <MapPin size={14} className="text-primary" />
               </div>
-              <span style={{ fontSize: 15, fontWeight: 500, color: "#1A1A18" }}>{area}</span>
+              <span className="text-sm font-medium text-foreground">{area}</span>
             </button>
           ))}
         </div>
