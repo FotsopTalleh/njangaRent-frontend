@@ -50,6 +50,7 @@ function ListingDetail() {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
   const [isSaved, setIsSaved] = useState(false);
+  const [descExpanded, setDescExpanded] = useState(false);
 
   const mapContainer = useRef<HTMLDivElement>(null);
   const mapRef = useRef<any>(null);
@@ -62,7 +63,7 @@ function ListingDetail() {
     emblaApi.on("select", () => setSelectedIndex(emblaApi.selectedScrollSnap()));
   }, [emblaApi]);
 
-  const { data: listing, isLoading, isError, error: listingError } = useQuery({
+  const { data: listingRaw, isLoading, isError, error: listingError } = useQuery({
     queryKey: ["listing", id],
     queryFn: async () => {
       // Intercept dummy listing IDs — no network request needed
@@ -78,6 +79,9 @@ function ListingDetail() {
     },
     retry: false,  // show error immediately; don't hammer the DB
   });
+
+  // Cast to any so both the old Listing type and Supabase shape work without type errors
+  const listing = listingRaw as any;
 
   const { data: rawSlots = [] } = useQuery({
     queryKey: ["visit-slots", id],
