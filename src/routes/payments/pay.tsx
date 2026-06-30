@@ -64,17 +64,20 @@ function PayPage() {
       });
       const data = res as any;
 
-      setWaitingUSSD(true);
-      pollCount.current = 0;
-
       const paymentId = data.data?.paymentId || data.paymentId;
       const reference = data.data?.reference || data.reference;
+      const initStatus = data.data?.status || data.status;
 
-      if (data.data?.status === "failed") {
+      // Check for immediate failure BEFORE showing USSD wait
+      if (initStatus === "failed" || !reference) {
         setIsLoading(false);
-        setError(data.data?.error || "Payment failed");
+        setError(data.data?.error || data.error || "Payment initiation failed. Please try again.");
         return;
       }
+
+      // Payment initiated successfully — show USSD waiting
+      setWaitingUSSD(true);
+      pollCount.current = 0;
 
       pollRef.current = setInterval(async () => {
         pollCount.current += 1;
