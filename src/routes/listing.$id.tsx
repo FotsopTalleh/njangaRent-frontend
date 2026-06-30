@@ -6,11 +6,12 @@ import {
   ArrowLeft, Heart, ShieldCheck, Star, MapPin,
   Wifi, Zap, Droplets, Shield, Car, Tv,
   CheckCircle, BedDouble, Bath, MessageSquare,
-  Loader2
+  Loader2, Calendar
 } from "lucide-react";
 import { useAuthStore } from "@/store/authStore";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { appointmentsApi, type AppointmentSlot } from "@/api/appointments.api";
 
 export const Route = createFileRoute("/listing/$id")({
   head: () => ({ meta: [{ title: "Listing Details — NjangaRent" }] }),
@@ -34,8 +35,9 @@ function ListingDetail() {
   const { token, user } = useAuthStore();
 
   const [showSchedule, setShowSchedule] = useState(false);
-  const [selectedDate, setSelectedDate] = useState<string | null>(null);
-  const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
+  const [apptDate, setApptDate] = useState("");
+  const [apptSlot, setApptSlot] = useState<AppointmentSlot>("morning");
+  const [apptNote, setApptNote] = useState("");
   const [isSaved, setIsSaved] = useState(false);
   const [descExpanded, setDescExpanded] = useState(false);
 
@@ -67,43 +69,27 @@ function ListingDetail() {
 
   const listing = listingRaw as any;
 
-  const { data: rawSlots = [] } = useQuery({
-    queryKey: ["visit-slots", id],
-    queryFn: async () => {
-      if (id.startsWith("dummy-")) return [];
-      const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
-      const res = await fetch(`/api/visits/slots/${id}`, { headers });
-      if (!res.ok) return [];
-      const j = await res.json();
-      return j.data ?? [];
-    },
-    enabled: showSchedule,
-  });
 
-  const groupedSlots = (rawSlots as any[]).reduce((acc: Record<string, any[]>, slot: any) => {
-    const d = new Date(slot.slot_datetime);
-    const dateKey = d.toISOString().split("T")[0];
-    if (!acc[dateKey]) acc[dateKey] = [];
-    acc[dateKey].push(slot);
-    return acc;
-  }, {});
-  const availableDates = Object.keys(groupedSlots).sort();
-
-  const bookSlot = useMutation({
-    mutationFn: async (slotId: string) => {
-      const res = await fetch(`/api/visits/book/${slotId}`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
+  const bookAppointment = useMutation({
+    mutationFn: async () => {
+      const l = listingRaw as any;
+      if (!apptDate) throw new Error("Please select a date");
+      return appointmentsApi.create({
+        listingId: l.id,
+        proposedDate: apptDate,
+        proposedSlot: apptSlot,
+        studentNote: apptNote || undefined,
       });
-      if (!res.ok) throw new Error(await res.text());
-      return res.json();
     },
     onSuccess: () => {
-      toast.success("Booking sent — waiting for landlord confirmation");
+      toast.success("Viewing request sent — waiting for landlord confirmation");
       setShowSchedule(false);
-      router.navigate({ to: "/visits" });
+      setApptDate("");
+      setApptSlot("morning");
+      setApptNote("");
+      router.navigate({ to: "/student/appointments" });
     },
-    onError: (err: any) => toast.error(err.message || "Failed to book slot"),
+    onError: (err: any) => toast.error(err.message || "Failed to send booking request"),
   });
 
   const startChat = useMutation({
@@ -373,7 +359,10 @@ function ListingDetail() {
             Pay Rent
           </button>
           <button
-            onClick={() => setShowSchedule(true)}
+            onClick={() => {
+              if (!user) { router.navigate({ to: "/login" }); return; }
+              setShowSchedule(true);
+            }}
             className="flex-1 h-12 rounded-xl bg-primary text-primary-foreground text-[15px] font-semibold hover:bg-primary/90 transition-colors"
           >
             Visit
@@ -398,88 +387,76 @@ function ListingDetail() {
             onClick={() => setShowSchedule(false)}
             className="fixed inset-0 bg-black/40 z-50 transition-opacity"
           />
-          <div className="fixed bottom-0 left-0 right-0 z-[60] bg-background rounded-t-[20px] pb-[calc(24px+env(safe-area-inset-bottom))] max-h-[80vh] overflow-y-auto">
+          <div className="fixed bottom-0 left-0 right-0 z-[60] bg-background rounded-t-[20px] pb-[calc(24px+env(safe-area-inset-bottom))] max-h-[85vh] overflow-y-auto">
             {/* Drag Handle */}
             <div className="flex justify-center pt-3">
               <div className="w-9 h-1 bg-muted-foreground/30 rounded-full" />
             </div>
 
             <div className="p-4 px-5">
-              <h3 className="text-lg font-bold text-foreground mb-1">Schedule a visit</h3>
+              <h3 className="text-lg font-bold text-foreground mb-1">Request a Viewing</h3>
               <p className="text-[13px] text-muted-foreground mb-5">{listing.title}</p>
 
-              {availableDates.length === 0 ? (
-                <div className="text-center py-8 text-sm text-muted-foreground">
-                  No available slots right now.<br />
-                  <strong className="text-foreground font-semibold">Message the landlord</strong> to arrange a time.
+              {/* Date picker */}
+              <div className="mb-4">
+                <label className="text-[12px] font-semibold text-muted-foreground uppercase tracking-wide mb-2 flex items-center gap-1.5">
+                  <Calendar size={12} /> Preferred Date
+                </label>
+                <input
+                  type="date"
+                  value={apptDate}
+                  min={new Date(Date.now() + 86400000).toISOString().split("T")[0]}
+                  onChange={(e) => setApptDate(e.target.value)}
+                  className="w-full h-11 rounded-xl border border-border bg-card text-foreground text-[14px] px-3 focus:outline-none focus:ring-2 focus:ring-primary/40"
+                />
+              </div>
+
+              {/* Time slot selector */}
+              <div className="mb-4">
+                <p className="text-[12px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">Preferred Time</p>
+                <div className="grid grid-cols-3 gap-2">
+                  {(["morning", "afternoon", "evening"] as AppointmentSlot[]).map((s) => (
+                    <button
+                      key={s}
+                      onClick={() => setApptSlot(s)}
+                      className={cn(
+                        "h-10 rounded-xl text-[13px] font-semibold border capitalize transition-colors",
+                        apptSlot === s
+                          ? "bg-primary border-primary text-primary-foreground"
+                          : "bg-card border-border text-foreground hover:border-primary/50"
+                      )}
+                    >
+                      {s}
+                    </button>
+                  ))}
                 </div>
-              ) : (
-                <>
-                  {/* Date Picker */}
-                  <div className="flex gap-2 overflow-x-auto pb-4 scrollbar-none -mx-5 px-5">
-                    {availableDates.map(dateStr => {
-                      const d = new Date(dateStr);
-                      const isSelected = selectedDate === dateStr;
-                      return (
-                        <button
-                          key={dateStr}
-                          onClick={() => { setSelectedDate(dateStr); setSelectedSlot(null); }}
-                          className={cn(
-                            "shrink-0 w-14 h-16 rounded-xl border flex flex-col items-center justify-center gap-0.5 transition-colors",
-                            isSelected
-                              ? "bg-primary border-primary text-primary-foreground"
-                              : "bg-card border-border text-foreground hover:border-primary/50"
-                          )}
-                        >
-                          <span className="text-[10px] font-semibold uppercase opacity-80">
-                            {d.toLocaleDateString("en-GB", { weekday: "short" })}
-                          </span>
-                          <span className="text-lg font-bold">{d.getDate()}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
+              </div>
 
-                  {/* Time Slots */}
-                  {selectedDate && (
-                    <>
-                      <p className="text-[13px] font-medium text-muted-foreground mb-2.5">Available times</p>
-                      <div className="grid grid-cols-2 gap-2.5 mb-5 max-h-[30vh] overflow-y-auto pr-1">
-                        {groupedSlots[selectedDate].map((slot: any) => {
-                          const d = new Date(slot.slot_datetime);
-                          const isSelected = selectedSlot === slot.id;
-                          const isBooked = slot.is_booked;
-                          return (
-                            <button
-                              key={slot.id}
-                              disabled={isBooked}
-                              onClick={() => setSelectedSlot(slot.id)}
-                              className={cn(
-                                "h-10 rounded-lg text-[13px] font-semibold border transition-colors",
-                                isBooked
-                                  ? "bg-muted border-transparent text-muted-foreground opacity-50 cursor-not-allowed"
-                                  : isSelected
-                                    ? "bg-primary border-primary text-primary-foreground"
-                                    : "bg-card border-border text-foreground hover:border-primary/50"
-                              )}
-                            >
-                              {d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </>
-                  )}
+              {/* Optional note */}
+              <div className="mb-5">
+                <label className="text-[12px] font-semibold text-muted-foreground uppercase tracking-wide mb-2 block">
+                  Note to Landlord <span className="normal-case font-normal">(optional)</span>
+                </label>
+                <textarea
+                  value={apptNote}
+                  onChange={(e) => setApptNote(e.target.value)}
+                  placeholder="e.g. I'm available after 4pm on weekdays"
+                  rows={2}
+                  className="w-full rounded-xl border border-border bg-card text-foreground text-[13px] px-3 py-2.5 resize-none focus:outline-none focus:ring-2 focus:ring-primary/40 placeholder:text-muted-foreground/60"
+                />
+              </div>
 
-                  <button
-                    className="w-full h-12 rounded-xl text-[15px] font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed bg-primary text-primary-foreground hover:bg-primary/90"
-                    disabled={!selectedDate || !selectedSlot || bookSlot.isPending}
-                    onClick={() => { if (selectedSlot) bookSlot.mutate(selectedSlot); }}
-                  >
-                    {bookSlot.isPending ? "Confirming..." : "Confirm booking"}
-                  </button>
-                </>
-              )}
+              <button
+                className="w-full h-12 rounded-xl text-[15px] font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed bg-primary text-primary-foreground hover:bg-primary/90"
+                disabled={!apptDate || bookAppointment.isPending}
+                onClick={() => bookAppointment.mutate()}
+              >
+                {bookAppointment.isPending ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <Loader2 size={16} className="animate-spin" /> Sending request...
+                  </span>
+                ) : "Send Viewing Request"}
+              </button>
             </div>
           </div>
         </>

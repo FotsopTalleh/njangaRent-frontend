@@ -1,10 +1,9 @@
-// Student Appointments — Supabase-backed
+// Student Appointments — backend API (consistent with landlord dashboard)
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Loader2, Calendar, AlertTriangle, MapPin, Clock, CheckCircle2, XCircle, Plus } from "lucide-react";
-import { supabase } from "@/lib/supabase";
-import { useAuthStore } from "@/store/authStore";
+import { appointmentsApi, type AppointmentStatus } from "@/api/appointments.api";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -14,48 +13,50 @@ export const Route = createFileRoute("/_student/student/appointments")({
 });
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: typeof Calendar }> = {
-  pending:   { label: "Pending",   color: "bg-amber-100 text-amber-700",   icon: Clock },
-  confirmed: { label: "Confirmed", color: "bg-emerald-100 text-emerald-700", icon: CheckCircle2 },
-  cancelled: { label: "Cancelled", color: "bg-red-100 text-red-700",       icon: XCircle },
-  completed: { label: "Completed", color: "bg-slate-100 text-slate-600",   icon: CheckCircle2 },
+  pending:     { label: "Pending",     color: "bg-amber-100 text-amber-700",    icon: Clock },
+  confirmed:   { label: "Confirmed",   color: "bg-emerald-100 text-emerald-700", icon: CheckCircle2 },
+  rescheduled: { label: "Rescheduled", color: "bg-blue-100 text-blue-700",       icon: Calendar },
+  cancelled:   { label: "Cancelled",   color: "bg-red-100 text-red-700",        icon: XCircle },
+  declined:    { label: "Declined",    color: "bg-red-100 text-red-700",        icon: XCircle },
+  completed:   { label: "Completed",   color: "bg-slate-100 text-slate-600",    icon: CheckCircle2 },
+  expired:     { label: "Expired",     color: "bg-slate-100 text-slate-500",    icon: XCircle },
+};
+
+const SLOT_LABEL: Record<string, string> = {
+  morning: "Morning (8am–12pm)",
+  afternoon: "Afternoon (12pm–5pm)",
+  evening: "Evening (5pm–8pm)",
 };
 
 function StudentAppointments() {
   const qc = useQueryClient();
-  const user = useAuthStore((s) => s.user);
-  const [filter, setFilter] = useState<"all" | "pending" | "confirmed" | "cancelled">("all");
+  const [filter, setFilter] = useState<"all" | AppointmentStatus>("all");
 
-  const { data = [], isLoading, error } = useQuery({
-    queryKey: ["student-appointments-full", user?.id, filter],
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["student-appointments", filter],
     queryFn: async () => {
-      if (!user?.id) return [];
-      let query = supabase
-        .from("appointments")
-        .select("*, listings(id, title, display_address, listing_images(url, category))")
-        .eq("student_id", user.id)
-        .order("scheduled_date", { ascending: true });
-      if (filter !== "all") query = query.eq("status", filter);
-      const { data, error } = await query;
-      if (error) throw new Error(error.message);
-      return data ?? [];
+      const res = await appointmentsApi.list(
+        filter !== "all" ? { status: filter as AppointmentStatus } : undefined
+      );
+      return res.data ?? [];
     },
-    enabled: !!user?.id,
   });
 
   const cancelMut = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("appointments").update({ status: "cancelled" }).eq("id", id);
-      if (error) throw new Error(error.message);
+      await appointmentsApi.cancel(id);
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["student-appointments-full"] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["student-appointments"] }),
   });
 
   const filters = [
-    { key: "all", label: "All" },
-    { key: "pending", label: "Pending" },
+    { key: "all",       label: "All" },
+    { key: "pending",   label: "Pending" },
     { key: "confirmed", label: "Confirmed" },
     { key: "cancelled", label: "Cancelled" },
   ] as const;
+
+  const appointments = (data ?? []) as any[];
 
   return (
     <div className="space-y-6 max-w-3xl">
@@ -76,7 +77,7 @@ function StudentAppointments() {
         {filters.map((f) => (
           <button
             key={f.key}
-            onClick={() => setFilter(f.key)}
+            onClick={() => setFilter(f.key as any)}
             className={cn(
               "px-4 py-1.5 rounded-full text-sm font-medium border transition-colors",
               filter === f.key
@@ -93,7 +94,7 @@ function StudentAppointments() {
       {error && (
         <div className="flex items-center gap-3 p-4 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-sm">
           <AlertTriangle className="h-4 w-4 shrink-0" />
-          <span>Could not load appointments: {(error as Error).message}</span>
+          <span>Could not load appointments: {(error as any).message ?? "Unknown error"}</span>
         </div>
       )}
 
@@ -105,7 +106,7 @@ function StudentAppointments() {
       )}
 
       {/* Empty state */}
-      {!isLoading && data.length === 0 && !error && (
+      {!isLoading && appointments.length === 0 && !error && (
         <div className="text-center py-16 text-muted-foreground">
           <Calendar className="h-10 w-10 mx-auto mb-3 opacity-40" />
           <p className="font-medium">No appointments</p>
@@ -118,67 +119,68 @@ function StudentAppointments() {
 
       {/* Appointment cards */}
       <div className="space-y-4">
-        {(data as any[]).map((a) => {
+        {appointments.map((a) => {
           const cfg = STATUS_CONFIG[a.status] ?? STATUS_CONFIG.pending;
           const Icon = cfg.icon;
-          const listing = a.listings as any;
-          const extImgs = listing?.listing_images?.filter((img: any) => img.category === 'exterior') || [];
-          const thumb = extImgs.length > 0 ? extImgs[0].url : null;
-          const dateStr = a.scheduled_date
-            ? new Date(a.scheduled_date).toLocaleDateString("en-CM", { weekday: "long", day: "numeric", month: "long", year: "numeric" })
+          const dateStr = a.proposedDate
+            ? new Date(a.proposedDate).toLocaleDateString("en-CM", {
+                weekday: "long", day: "numeric", month: "long", year: "numeric",
+              })
             : "Date TBD";
           return (
-            <div key={a.id} className="rounded-2xl border border-border bg-card overflow-hidden flex gap-0">
-              {/* Thumbnail */}
-              {thumb && (
-                <div className="w-24 shrink-0 bg-muted">
-                  <img src={thumb} alt="listing" className="w-full h-full object-cover" />
+            <div key={a.id} className="rounded-2xl border border-border bg-card p-4 space-y-2.5">
+              <div className="flex items-start justify-between gap-2 flex-wrap">
+                <div className="min-w-0">
+                  <p className="font-semibold text-sm text-foreground line-clamp-1">
+                    {a.listingTitle ?? "Property Viewing"}
+                  </p>
+                  {a.listingAddress && (
+                    <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                      <MapPin className="h-3 w-3 shrink-0" /> {a.listingAddress}
+                    </p>
+                  )}
+                  <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                    <Calendar className="h-3 w-3" /> {dateStr}
+                  </p>
+                  {a.proposedSlot && (
+                    <p className="text-xs text-muted-foreground capitalize mt-0.5">
+                      {SLOT_LABEL[a.proposedSlot] ?? a.proposedSlot}
+                    </p>
+                  )}
+                  {a.landlordNote && (
+                    <p className="text-xs text-muted-foreground mt-1 italic">
+                      Landlord note: "{a.landlordNote}"
+                    </p>
+                  )}
+                  {a.declineReason && (
+                    <p className="text-xs text-destructive mt-1">
+                      Declined: {a.declineReason}
+                    </p>
+                  )}
+                </div>
+                <span className={cn("text-xs font-medium px-2.5 py-1 rounded-full shrink-0 flex items-center gap-1", cfg.color)}>
+                  <Icon className="h-3 w-3" /> {cfg.label}
+                </span>
+              </div>
+
+              {a.status === "pending" && (
+                <div className="flex gap-2 pt-1">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="rounded-xl h-8 text-xs text-destructive border-destructive/30"
+                    onClick={() => cancelMut.mutate(a.id)}
+                    disabled={cancelMut.isPending}
+                  >
+                    {cancelMut.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Cancel"}
+                  </Button>
+                  {a.listingId && (
+                    <Button asChild variant="ghost" size="sm" className="rounded-xl h-8 text-xs">
+                      <Link to="/listing/$id" params={{ id: a.listingId }}>View Listing →</Link>
+                    </Button>
+                  )}
                 </div>
               )}
-              <div className="p-4 flex-1 min-w-0">
-                <div className="flex items-start justify-between gap-2 flex-wrap">
-                  <div>
-                    <p className="font-semibold text-sm text-foreground line-clamp-1">
-                      {listing?.title ?? "Property Viewing"}
-                    </p>
-                    {listing?.display_address && (
-                      <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
-                        <MapPin className="h-3 w-3" /> {listing.display_address}
-                      </p>
-                    )}
-                    <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
-                      <Calendar className="h-3 w-3" /> {dateStr}
-                    </p>
-                    {a.slot && (
-                      <p className="text-xs text-muted-foreground capitalize mt-0.5">
-                        Time slot: {a.slot}
-                      </p>
-                    )}
-                  </div>
-                  <span className={cn("text-xs font-medium px-2.5 py-1 rounded-full shrink-0 flex items-center gap-1", cfg.color)}>
-                    <Icon className="h-3 w-3" /> {cfg.label}
-                  </span>
-                </div>
-
-                {a.status === "pending" && (
-                  <div className="mt-3 flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="rounded-xl h-8 text-xs text-destructive border-destructive/30"
-                      onClick={() => cancelMut.mutate(a.id)}
-                      disabled={cancelMut.isPending}
-                    >
-                      {cancelMut.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Cancel"}
-                    </Button>
-                    {listing?.id && (
-                      <Button asChild variant="ghost" size="sm" className="rounded-xl h-8 text-xs">
-                        <Link to="/listing/$id" params={{ id: listing.id }}>View Listing →</Link>
-                      </Button>
-                    )}
-                  </div>
-                )}
-              </div>
             </div>
           );
         })}
