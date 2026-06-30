@@ -1,8 +1,8 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
-import { useState, useRef } from "react";
-import { ArrowLeft, CheckCircle2, AlertCircle } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import { ArrowLeft, CheckCircle2, AlertCircle, User, Phone, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { campayPaymentsApi } from "@/api/campayPayments.api";
+import { campayPaymentsApi, type ListingInfo } from "@/api/campayPayments.api";
 
 export const Route = createFileRoute("/payments/pay")({
   head: () => ({ meta: [{ title: "Pay Rent — NjangaRent" }] }),
@@ -27,15 +27,27 @@ function PayPage() {
   const [waitingUSSD, setWaitingUSSD] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [agreementChecked, setAgreementChecked] = useState(false);
+  const [listingInfo, setListingInfo] = useState<ListingInfo | null>(null);
+  const [infoLoading, setInfoLoading] = useState(false);
   const pollRef = useRef<NodeJS.Timeout | null>(null);
   const pollCount = useRef(0);
 
-  const displayAmount = amount || 35000;
-  const displayTitle = listingTitle || "Molyko Studio · Room 4";
+  const displayAmount = listingInfo?.rentAmount || amount || 35000;
+  const displayTitle = listingInfo?.title || listingTitle || "Property";
   const currentMonth = new Date().toLocaleDateString("en-GB", { month: "long", year: "numeric" });
 
   const isPhoneValid = phone.replace(/\s/g, "").length === 9 && phone.startsWith("6");
   const canPay = !!provider && isPhoneValid && agreementChecked && !isLoading;
+
+  // Fetch listing + landlord info on mount
+  useEffect(() => {
+    if (!listingId) return;
+    setInfoLoading(true);
+    campayPaymentsApi.getListingInfo(listingId)
+      .then((res) => setListingInfo(res.data))
+      .catch(() => {/* non-fatal, fall back to search params */})
+      .finally(() => setInfoLoading(false));
+  }, [listingId]);
 
   const handlePay = async () => {
     if (!canPay) return;
@@ -45,24 +57,27 @@ function PayPage() {
     try {
       const res = await campayPaymentsApi.initiate({
         listingId,
+        landlordId: listingInfo?.landlordId,
         amount: displayAmount,
         phone: phone.replace(/\s/g, ""),
         paymentType: "rent",
       });
       const data = res as any;
 
-      setWaitingUSSD(true);
-      pollCount.current = 0;
-
       const paymentId = data.data?.paymentId || data.paymentId;
       const reference = data.data?.reference || data.reference;
-      
-      // If payment failed immediately (e.g., amount too high for demo)
-      if (data.data?.status === 'failed') {
+      const initStatus = data.data?.status || data.status;
+
+      // Check for immediate failure BEFORE showing USSD wait
+      if (initStatus === "failed" || !reference) {
         setIsLoading(false);
-        setError(data.data?.error || "Payment failed");
+        setError(data.data?.error || data.error || "Payment initiation failed. Please try again.");
         return;
       }
+
+      // Payment initiated successfully — show USSD waiting
+      setWaitingUSSD(true);
+      pollCount.current = 0;
 
       pollRef.current = setInterval(async () => {
         pollCount.current += 1;
@@ -80,7 +95,11 @@ function PayPage() {
 
         if (status === "SUCCESSFUL" || status === "success" || status === "completed") {
           clearInterval(pollRef.current!);
-          router.navigate({ to: "/payments/receipt/$paymentId", params: { paymentId }, search: { amount: displayAmount, title: displayTitle, provider: provider! } });
+          router.navigate({
+            to: "/payments/receipt/$paymentId",
+            params: { paymentId },
+            search: { amount: displayAmount, title: displayTitle, provider: provider! },
+          });
         } else if (status === "FAILED" || status === "failed" || status === "error") {
           clearInterval(pollRef.current!);
           setWaitingUSSD(false);
@@ -128,6 +147,59 @@ function PayPage() {
             ₣{displayAmount.toLocaleString()}
           </p>
           <p style={{ margin: "4px 0 0", fontSize: 12, color: "#6B6B68" }}>FCFA due</p>
+        </div>
+
+        {/* Paying To — Landlord card */}
+        <div style={{
+          backgroundColor: "#FFFFFF",
+          borderRadius: 16, border: "0.5px solid #E8E4DC",
+          padding: "16px", marginBottom: 16,
+        }}>
+          <p style={{ margin: "0 0 12px", fontSize: 11, fontWeight: 700, color: "#6B6B68", textTransform: "uppercase", letterSpacing: 0.5 }}>
+            Paying to
+          </p>
+          {infoLoading ? (
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <Loader2 size={16} style={{ animation: "spin 0.8s linear infinite", color: "#6B6B68" }} />
+              <span style={{ fontSize: 13, color: "#6B6B68" }}>Loading landlord info...</span>
+            </div>
+          ) : listingInfo ? (
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              {/* Avatar */}
+              <div style={{
+                width: 44, height: 44, borderRadius: "50%",
+                backgroundColor: "#1B4332", color: "#FFFFFF",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                fontSize: 18, fontWeight: 700, flexShrink: 0,
+              }}>
+                {listingInfo.landlordName.charAt(0).toUpperCase()}
+              </div>
+              <div>
+                <p style={{ margin: 0, fontSize: 15, fontWeight: 600, color: "#1A1A18" }}>
+                  {listingInfo.landlordName}
+                </p>
+                <div style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 3 }}>
+                  <Phone size={12} color="#6B6B68" />
+                  <p style={{ margin: 0, fontSize: 13, color: "#6B6B68", fontFamily: "monospace" }}>
+                    {listingInfo.landlordPhone}
+                  </p>
+                </div>
+              </div>
+              <div style={{
+                marginLeft: "auto", backgroundColor: "#EAF4EE",
+                borderRadius: 8, padding: "4px 10px",
+              }}>
+                <p style={{ margin: 0, fontSize: 11, fontWeight: 600, color: "#1B4332" }}>
+                  Verified Landlord
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <User size={16} color="#6B6B68" />
+              <span style={{ fontSize: 13, color: "#6B6B68" }}>Landlord info unavailable</span>
+            </div>
+          )}
         </div>
 
         {/* Warning Message & Checkbox */}
@@ -204,9 +276,12 @@ function PayPage() {
           {provider === "orange" && <CheckCircle2 size={18} color="#1B4332" style={{ marginLeft: "auto" }} />}
         </button>
 
-        {/* Phone Number Input */}
-        <p style={{ fontSize: 13, fontWeight: 600, color: "#6B6B68", marginBottom: 8, textTransform: "uppercase", letterSpacing: 0.5 }}>
-          Mobile number
+        {/* Your Phone Number Input */}
+        <p style={{ fontSize: 13, fontWeight: 600, color: "#6B6B68", marginBottom: 4, textTransform: "uppercase", letterSpacing: 0.5 }}>
+          Your mobile number
+        </p>
+        <p style={{ fontSize: 12, color: "#A8A8A5", marginBottom: 8 }}>
+          The USSD push will be sent to this number to confirm the payment.
         </p>
         <div style={{
           display: "flex", alignItems: "center",
@@ -277,6 +352,11 @@ function PayPage() {
         padding: "12px 16px",
         paddingBottom: "calc(12px + env(safe-area-inset-bottom))",
       }}>
+        {listingInfo && (
+          <p style={{ margin: "0 0 8px", fontSize: 12, color: "#6B6B68", textAlign: "center" }}>
+            Funds will be sent to <strong style={{ color: "#1A1A18" }}>{listingInfo.landlordName}</strong> ({listingInfo.landlordPhone})
+          </p>
+        )}
         <button
           onClick={handlePay}
           disabled={!canPay}

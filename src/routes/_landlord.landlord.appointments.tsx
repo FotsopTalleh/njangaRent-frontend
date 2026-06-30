@@ -50,7 +50,7 @@ function LandlordAppointments() {
       <div>
         <h1 className="text-xl font-bold tracking-tight">Viewing Requests</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          {(data as any[]).filter((a: any) => a.status === "pending").length} pending · Respond to tenant viewing requests.
+        {(data as any[]).filter((a: any) => a.status === "pending").length} pending · Respond to tenant viewing requests.
         </p>
       </div>
 
@@ -92,29 +92,30 @@ function LandlordAppointments() {
       <div className="space-y-4">
         {(data as any[]).map((a) => {
           const cfg = STATUS_CONFIG[a.status] ?? STATUS_CONFIG.pending;
-          const listing = a.listings as any;
-          const student = a.users as any;
-          const dateStr = a.scheduled_date
-            ? new Date(a.scheduled_date).toLocaleDateString("en-CM", { weekday: "long", day: "numeric", month: "long" })
+          const dateStr = a.proposedDate
+            ? new Date(a.proposedDate).toLocaleDateString("en-CM", { weekday: "long", day: "numeric", month: "long" })
             : "Date TBD";
           return (
             <div key={a.id} className="rounded-2xl border border-border bg-card p-4 space-y-3">
               <div className="flex items-start justify-between gap-2">
                 <div>
-                  <p className="font-semibold text-sm text-foreground">{listing?.title ?? "Property viewing"}</p>
-                  {listing?.display_address && (
+                  <p className="font-semibold text-sm text-foreground">{a.listingTitle ?? "Property viewing"}</p>
+                  {a.listingAddress && (
                     <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
-                      <MapPin className="h-3 w-3" /> {listing.display_address}
+                      <MapPin className="h-3 w-3" /> {a.listingAddress}
                     </p>
                   )}
                   <p className="text-xs text-muted-foreground mt-0.5">
                     <Calendar className="h-3 w-3 inline mr-1" />{dateStr}
-                    {a.slot && <span className="ml-2">· {a.slot}</span>}
+                    {a.proposedSlot && <span className="ml-2 capitalize">· {a.proposedSlot}</span>}
                   </p>
-                  {student && (
+                  {a.studentName && (
                     <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
-                      <User className="h-3 w-3" /> {student.full_name ?? student.email}
+                      <User className="h-3 w-3" /> {a.studentName}
                     </p>
+                  )}
+                  {a.studentNote && (
+                    <p className="text-xs text-muted-foreground mt-1 italic">Student note: "{a.studentNote}"</p>
                   )}
                 </div>
                 <span className={cn("text-xs font-medium px-2.5 py-1 rounded-full shrink-0", cfg.color)}>

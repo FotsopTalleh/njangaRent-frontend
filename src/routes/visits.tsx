@@ -1,11 +1,11 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Calendar, Clock, CheckCircle, XCircle, Loader2, AlertTriangle, Plus, MapPin } from "lucide-react";
-import { supabase } from "@/lib/supabase";
 import { useAuthStore } from "@/store/authStore";
 import { Button } from "@/components/ui/button";
 import { Link } from "@tanstack/react-router";
 import { cn } from "@/lib/utils";
+import { appointmentsApi } from "@/api/appointments.api";
 
 export const Route = createFileRoute("/visits")({
   head: () => ({ meta: [{ title: "My Visits — NjangaRent" }] }),
@@ -13,11 +13,18 @@ export const Route = createFileRoute("/visits")({
 });
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: typeof Calendar }> = {
-  pending:   { label: "Pending",   color: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300",    icon: Clock },
-  confirmed: { label: "Confirmed", color: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300", icon: CheckCircle },
-  cancelled: { label: "Cancelled", color: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300",            icon: XCircle },
-  completed: { label: "Completed", color: "bg-muted text-muted-foreground",                                            icon: CheckCircle },
-  declined:  { label: "Declined",  color: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300",            icon: XCircle },
+  pending:     { label: "Pending",     color: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300",       icon: Clock },
+  confirmed:   { label: "Confirmed",   color: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300", icon: CheckCircle },
+  rescheduled: { label: "Rescheduled", color: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300",            icon: Calendar },
+  cancelled:   { label: "Cancelled",   color: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300",               icon: XCircle },
+  completed:   { label: "Completed",   color: "bg-muted text-muted-foreground",                                               icon: CheckCircle },
+  declined:    { label: "Declined",    color: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300",               icon: XCircle },
+};
+
+const SLOT_LABEL: Record<string, string> = {
+  morning: "Morning (8am–12pm)",
+  afternoon: "Afternoon (12pm–5pm)",
+  evening: "Evening (5pm–8pm)",
 };
 
 function VisitsPage() {
@@ -25,31 +32,24 @@ function VisitsPage() {
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
 
-  const { data = [], isLoading, error } = useQuery({
+  const { data, isLoading, error } = useQuery({
     queryKey: ["visits-page", user?.id],
     queryFn: async () => {
-      if (!user?.id) return [];
-      const { data, error } = await supabase
-        .from("appointments")
-        .select("*, listings(id, title, display_address, listing_images(url, category))")
-        .eq("student_id", user.id)
-        .order("scheduled_date", { ascending: true });
-      if (error) throw new Error(error.message);
-      return data ?? [];
+      const res = await appointmentsApi.list();
+      return res.data ?? [];
     },
     enabled: !!user?.id,
-    refetchInterval: 10_000,
+    refetchInterval: 15_000,
   });
 
   const cancelMut = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("appointments").update({ status: "cancelled" }).eq("id", id);
-      if (error) throw new Error(error.message);
+      await appointmentsApi.cancel(id);
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["visits-page"] }),
   });
 
-  const visits = data as any[];
+  const visits = (data ?? []) as any[];
 
   return (
     <div className="min-h-screen bg-background text-foreground pb-[calc(56px+env(safe-area-inset-bottom))]">
@@ -67,7 +67,7 @@ function VisitsPage() {
       {error && (
         <div className="mx-4 mt-4 flex items-center gap-3 p-4 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-sm">
           <AlertTriangle className="h-4 w-4 shrink-0" />
-          <span>Could not load visits: {(error as Error).message}</span>
+          <span>Could not load visits: {(error as any).message ?? "Unknown error"}</span>
         </div>
       )}
 
@@ -94,37 +94,37 @@ function VisitsPage() {
         {visits.map((visit) => {
           const cfg = STATUS_CONFIG[visit.status] ?? STATUS_CONFIG.pending;
           const Icon = cfg.icon;
-          const listing = visit.listings as any;
-          const extImgs = listing?.listing_images?.filter((img: any) => img.category === 'exterior') || [];
-          const thumb = extImgs.length > 0 ? extImgs[0].url : null;
-          const dateStr = visit.scheduled_date
-            ? new Date(visit.scheduled_date).toLocaleDateString("en-CM", { weekday: "long", day: "numeric", month: "long", year: "numeric" })
+          const dateStr = visit.proposedDate
+            ? new Date(visit.proposedDate).toLocaleDateString("en-CM", {
+                weekday: "long", day: "numeric", month: "long", year: "numeric",
+              })
             : "Date TBD";
 
           return (
-            <div key={visit.id} className="rounded-2xl border border-border bg-card overflow-hidden flex">
-              {/* Thumbnail */}
-              {thumb && (
-                <div className="w-24 shrink-0 bg-muted">
-                  <img src={thumb} alt="listing" className="w-full h-full object-cover" />
-                </div>
-              )}
-              <div className="p-3.5 flex-1 min-w-0">
+            <div key={visit.id} className="rounded-2xl border border-border bg-card overflow-hidden">
+              <div className="p-3.5">
                 <div className="flex items-start justify-between gap-2 flex-wrap">
-                  <div>
+                  <div className="min-w-0">
                     <p className="text-sm font-semibold text-foreground line-clamp-1">
-                      {listing?.title ?? "Property Viewing"}
+                      {visit.listingTitle ?? "Property Viewing"}
                     </p>
-                    {listing?.display_address && (
+                    {visit.listingAddress && (
                       <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
-                        <MapPin className="h-3 w-3" /> {listing.display_address}
+                        <MapPin className="h-3 w-3 shrink-0" /> {visit.listingAddress}
                       </p>
                     )}
                     <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
                       <Calendar className="h-3 w-3" /> {dateStr}
                     </p>
-                    {visit.slot && (
-                      <p className="text-xs text-muted-foreground capitalize mt-0.5">Slot: {visit.slot}</p>
+                    {visit.proposedSlot && (
+                      <p className="text-xs text-muted-foreground capitalize mt-0.5">
+                        {SLOT_LABEL[visit.proposedSlot] ?? visit.proposedSlot}
+                      </p>
+                    )}
+                    {visit.landlordNote && (
+                      <p className="text-xs text-muted-foreground mt-1 italic">
+                        Note: "{visit.landlordNote}"
+                      </p>
                     )}
                   </div>
                   <span className={cn("text-[11px] font-semibold px-2.5 py-1 rounded-full flex items-center gap-1 shrink-0", cfg.color)}>
@@ -143,9 +143,9 @@ function VisitsPage() {
                     >
                       Cancel
                     </Button>
-                    {listing?.id && (
+                    {visit.listingId && (
                       <Button asChild variant="ghost" size="sm" className="rounded-xl h-7 text-xs">
-                        <Link to="/listing/$id" params={{ id: listing.id }}>View →</Link>
+                        <Link to="/listing/$id" params={{ id: visit.listingId }}>View →</Link>
                       </Button>
                     )}
                   </div>
