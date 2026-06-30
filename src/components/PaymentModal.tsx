@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { X, Loader2, CheckCircle2, XCircle, Smartphone } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { nkwaPaymentsApi, type NkwaPayment, type PaymentType } from "@/api/nkwaPayments.api";
+import { campayPaymentsApi, type CampayPayment, type PaymentType } from "@/api/campayPayments.api";
 import { socketService } from "@/services/socket";
 import { useAuthStore } from "@/store/authStore";
 
@@ -34,7 +34,7 @@ export function PaymentModal({
   const [amount,  setAmount]  = useState(String(suggestedAmount));
   const [loading, setLoading] = useState(false);
   const [error,   setError]   = useState<string | null>(null);
-  const [payment, setPayment] = useState<NkwaPayment | null>(null);
+  const [payment, setPayment] = useState<CampayPayment | null>(null);
   const [status,  setStatus]  = useState<"idle" | "pending" | "confirmed" | "failed">("idle");
 
   // Listen for real-time status updates on this payment
@@ -45,7 +45,36 @@ export function PaymentModal({
         setStatus(data.status === "confirmed" ? "confirmed" : "failed");
       }
     });
-    return unsub;
+
+    // Fallback polling (especially for local dev without ngrok webhooks)
+    let pollCount = 0;
+    const pollInterval = setInterval(async () => {
+      if (status !== "pending") return;
+      pollCount++;
+      if (pollCount > 15) {
+        clearInterval(pollInterval);
+        setStatus("failed");
+        return;
+      }
+      try {
+        const res = await campayPaymentsApi.getStatus(payment.transactionId);
+        const s = (res as any)?.data?.status;
+        if (s === "SUCCESSFUL" || s === "success" || s === "completed") {
+          setStatus("confirmed");
+          clearInterval(pollInterval);
+        } else if (s === "FAILED" || s === "failed" || s === "error") {
+          setStatus("failed");
+          clearInterval(pollInterval);
+        }
+      } catch (e) {
+        // Ignore poll errors
+      }
+    }, 3000);
+
+    return () => {
+      unsub();
+      clearInterval(pollInterval);
+    };
   }, [payment]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -57,7 +86,7 @@ export function PaymentModal({
 
     setLoading(true);
     try {
-      const res = await nkwaPaymentsApi.initiate({
+      const res = await campayPaymentsApi.initiate({
         listingId,
         amount:      parsedAmount,
         phone:       phone.trim(),
@@ -89,7 +118,7 @@ export function PaymentModal({
         <div className="flex items-center justify-between mb-5">
           <div>
             <h2 id="payment-modal-title" className="font-semibold text-base">
-              {paymentType === "deposit" ? "Pay Deposit" : "Pay Rent"} via Nkwa
+              {paymentType === "deposit" ? "Pay Deposit" : "Pay Rent"} via Campay
             </h2>
             <p className="text-xs text-muted-foreground mt-0.5 truncate max-w-[260px]">
               {listingTitle}
@@ -134,7 +163,7 @@ export function PaymentModal({
             <Loader2 className="h-14 w-14 text-primary mx-auto mb-3 animate-spin" aria-hidden="true" />
             <p className="font-semibold text-lg">Awaiting confirmation</p>
             <p className="text-sm text-muted-foreground mt-1">
-              Check your phone ({phone}) and approve the Nkwa prompt.
+              Check your phone ({phone}) and approve the Campay prompt.
             </p>
           </div>
         )}
@@ -188,7 +217,7 @@ export function PaymentModal({
             )}
 
             <div className="rounded-xl bg-muted p-3 text-xs text-muted-foreground space-y-0.5">
-              <p>Powered by Nkwa Mobile Money</p>
+              <p>Powered by Campay Mobile Money</p>
               <p>You will receive a payment prompt on your phone.</p>
             </div>
 

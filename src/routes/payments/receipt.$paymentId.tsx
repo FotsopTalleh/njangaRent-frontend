@@ -150,7 +150,7 @@ function ReceiptPage() {
 
           <div style={{ padding: "14px 16px", textAlign: "center" }}>
             <p style={{ margin: 0, fontSize: 11, color: "#A8A8A5" }}>NjangaRent · Buea, Cameroon</p>
-            <p style={{ margin: "2px 0 0", fontSize: 11, color: "#A8A8A5" }}>Powered by Nkwa</p>
+            <p style={{ margin: "2px 0 0", fontSize: 11, color: "#A8A8A5" }}>Powered by Campay</p>
           </div>
         </div>
 

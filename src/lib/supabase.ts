@@ -40,8 +40,8 @@ export function normaliseListing(row: any) {
     amenities:        Array.isArray(row.amenities) ? row.amenities : [],
     rules:            row.rules ?? "",
     maxOccupants:     row.max_occupants ?? 1,
-    exteriorImages:   Array.isArray(row.exterior_images) ? row.exterior_images : [],
-    roomImages:       Array.isArray(row.room_images) ? row.room_images : [],
+    exteriorImages:   Array.isArray(row.listing_images) ? row.listing_images.filter((img: any) => img.category === 'exterior').map((img: any) => img.url) : (Array.isArray(row.exterior_images) ? row.exterior_images : []),
+    roomImages:       Array.isArray(row.listing_images) ? row.listing_images.filter((img: any) => img.category === 'room').map((img: any) => img.url) : (Array.isArray(row.room_images) ? row.room_images : []),
     // location object for map / address display
     location: {
       lat:            row.lat ?? null,
@@ -71,7 +71,7 @@ export const supabaseListings = {
   } = {}) => {
     let query = supabase
       .from("listings")
-      .select("*")
+      .select("*, listing_images(url, category)")
       .eq("status", "active")
       .order("created_at", { ascending: false })
       .limit(params.limit ?? 100);
@@ -95,7 +95,7 @@ export const supabaseListings = {
   getById: async (id: string) => {
     const { data, error } = await supabase
       .from("listings")
-      .select("*")
+      .select("*, listing_images(url, category)")
       .eq("id", id)
       .maybeSingle();            // returns null instead of error when 0 rows
 
@@ -170,14 +170,23 @@ export const supabaseListings = {
         max_occupants:  payload.maxOccupants,
         lat:            payload.lat ?? null,
         lng:            payload.lng ?? null,
-        exterior_images: exteriorImages,
-        room_images:    roomImages,
         status:         "pending_admin_review",
       })
-      .select()
+      .select("*, listing_images(url, category)")
       .single();
 
     if (error) throw new Error(error.message);
+    
+    // Insert into listing_images
+    if (exteriorImages.length > 0 || roomImages.length > 0) {
+      const inserts = [
+        ...exteriorImages.map((url, i) => ({ listing_id: data.id, url, category: 'exterior', sort_order: i })),
+        ...roomImages.map((url, i) => ({ listing_id: data.id, url, category: 'room', sort_order: i }))
+      ];
+      await supabase.from('listing_images').insert(inserts);
+      data.listing_images = inserts;
+    }
+
     onProgress?.(100);
     return normaliseListing(data);
   },
