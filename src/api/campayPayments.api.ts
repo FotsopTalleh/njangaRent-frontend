@@ -21,15 +21,31 @@ export interface CampayPayment {
   listingTitle?: string;
 }
 
+export interface ListingInfo {
+  listingId:      string;
+  title:          string;
+  rentAmount:     number;
+  displayAddress: string;
+  landlordId:     string;
+  landlordName:   string;
+  landlordPhone:  string; // masked, e.g. "+237 670XXXXX45"
+}
+
 export interface InitiatePaymentBody {
   listingId: string;
   amount: number;
   phone: string;
   paymentType: PaymentType;
-  landlordId?: string; // Often deduced on backend if not supplied, but good to have
+  landlordId?: string;
 }
 
 export const campayPaymentsApi = {
+  /** Fetch listing + landlord display info before payment. */
+  getListingInfo: async (listingId: string): Promise<{ data: ListingInfo }> => {
+    const res = await axiosClient.get(`/campay/listing-info/${listingId}`);
+    return res.data;
+  },
+
   /** Initiate a Campay MoMo payment. */
   initiate: async (body: InitiatePaymentBody): Promise<{ data: CampayPayment }> => {
     // We map frontend 'phone' to backend expected 'phoneNumber'
