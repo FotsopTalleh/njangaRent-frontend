@@ -116,10 +116,10 @@ function AdminListings() {
                   <div className="flex items-start justify-between gap-2 flex-wrap">
                     <div>
                       <p className="font-semibold text-sm line-clamp-1">{listing.title as string}</p>
-                      <p className="text-xs text-muted-foreground">{String(listing.property_type ?? "")} &bull; {formatXAF((listing.rent_amount as number) ?? 0)}/{String(listing.rent_period ?? "")}</p>
-                      {listing.display_address != null && (
+                      <p className="text-xs text-muted-foreground">{String(listing.propertyType ?? "")} &bull; {formatXAF((listing.rentAmount as number) ?? 0)}/{String(listing.rentPeriod ?? "")}</p>
+                      {listing.location && (listing.location as any).displayAddress != null && (
                         <p className="text-xs text-muted-foreground mt-0.5">
-                          {String(listing.display_address ?? "No address")}
+                          {String((listing.location as any).displayAddress ?? "No address")}
                         </p>
                       )}
                     </div>

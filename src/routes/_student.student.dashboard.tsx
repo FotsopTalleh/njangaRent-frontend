@@ -54,9 +54,9 @@ function StudentDashboard() {
     queryFn: async () => {
       if (!user?.id) return 0;
       const { count, error } = await supabase
-        .from("nkwa_payments")
+        .from("campay_payments")
         .select("id", { count: "exact", head: true })
-        .eq("user_id", user.id);
+        .eq("payer_id", user.id);
       if (error) return 0;
       return count ?? 0;
     },

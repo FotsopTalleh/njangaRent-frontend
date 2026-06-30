@@ -31,7 +31,7 @@ function VisitsPage() {
       if (!user?.id) return [];
       const { data, error } = await supabase
         .from("appointments")
-        .select("*, listings(id, title, display_address, exterior_images)")
+        .select("*, listings(id, title, display_address, listing_images(url, category))")
         .eq("student_id", user.id)
         .order("scheduled_date", { ascending: true });
       if (error) throw new Error(error.message);
@@ -95,7 +95,8 @@ function VisitsPage() {
           const cfg = STATUS_CONFIG[visit.status] ?? STATUS_CONFIG.pending;
           const Icon = cfg.icon;
           const listing = visit.listings as any;
-          const thumb = listing?.exterior_images?.[0];
+          const extImgs = listing?.listing_images?.filter((img: any) => img.category === 'exterior') || [];
+          const thumb = extImgs.length > 0 ? extImgs[0].url : null;
           const dateStr = visit.scheduled_date
             ? new Date(visit.scheduled_date).toLocaleDateString("en-CM", { weekday: "long", day: "numeric", month: "long", year: "numeric" })
             : "Date TBD";

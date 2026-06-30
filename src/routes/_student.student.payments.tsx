@@ -1,4 +1,4 @@
-// Student Payments — Supabase-backed (nkwa_payments table)
+// Student Payments — Supabase-backed (campay_payments table)
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { Loader2, CreditCard, CheckCircle2, XCircle, Clock, AlertTriangle } from "lucide-react";
@@ -10,9 +10,9 @@ export const Route = createFileRoute("/_student/student/payments")({
   component: StudentPayments,
 });
 
-type NkwaStatus = "initiated" | "confirmed" | "failed";
+type CampayStatus = "initiated" | "pending" | "confirmed" | "failed";
 
-const STATUS_CONFIG: Record<NkwaStatus, { label: string; color: string; icon: typeof CheckCircle2 }> = {
+const STATUS_CONFIG: Record<CampayStatus, { label: string; color: string; icon: typeof CheckCircle2 }> = {
   initiated: { label: "Pending",   color: "text-amber-700 bg-amber-100",     icon: Clock        },
   confirmed: { label: "Confirmed", color: "text-emerald-700 bg-emerald-100", icon: CheckCircle2 },
   failed:    { label: "Failed",    color: "text-red-700 bg-red-100",         icon: XCircle      },
@@ -30,9 +30,9 @@ function StudentPayments() {
     queryFn: async () => {
       if (!user?.id) return [];
       const { data, error } = await supabase
-        .from("nkwa_payments")
+        .from("campay_payments")
         .select("*")
-        .eq("user_id", user.id)
+        .eq("payer_id", user.id)
         .order("created_at", { ascending: false });
       if (error) throw new Error(error.message);
       return data ?? [];
@@ -42,14 +42,14 @@ function StudentPayments() {
 
   const payments = data as any[];
   const totalConfirmed = payments
-    .filter((p) => p.nkwa_status === "confirmed")
+    .filter((p) => p.status === "confirmed")
     .reduce((sum, p) => sum + (p.amount_xaf ?? p.amount ?? 0), 0);
 
   return (
     <div className="space-y-6 max-w-2xl">
       <div>
         <h1 className="text-xl font-bold tracking-tight">Payment History</h1>
-        <p className="text-sm text-muted-foreground mt-1">All payments made via Nkwa Mobile Money.</p>
+        <p className="text-sm text-muted-foreground mt-1">All payments made via Campay Mobile Money.</p>
       </div>
 
       {/* Error */}
@@ -87,7 +87,7 @@ function StudentPayments() {
 
       <div className="space-y-3">
         {payments.map((p) => {
-          const status = (p.nkwa_status ?? "initiated") as NkwaStatus;
+          const status = (p.status ?? "initiated") as CampayStatus;
           const cfg = STATUS_CONFIG[status] ?? STATUS_CONFIG.initiated;
           const Icon = cfg.icon;
           const dateStr = p.created_at

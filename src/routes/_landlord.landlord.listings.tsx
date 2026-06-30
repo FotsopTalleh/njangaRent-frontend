@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Plus, Building2, Eye, Loader2, Trash2, CheckCircle2, AlertCircle } from "lucide-react";
-import { supabase } from "@/lib/supabase";
+import { supabase, normaliseListing } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/store/authStore";
@@ -39,7 +39,7 @@ function LandlordListings() {
         .eq("landlord_id", user.id)
         .order("created_at", { ascending: false });
       if (error) throw new Error(error.message);
-      return data ?? [];
+      return (data ?? []).map(normaliseListing);
     },
     enabled: !!user?.id,
   });

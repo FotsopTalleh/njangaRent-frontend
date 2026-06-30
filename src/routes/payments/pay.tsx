@@ -1,8 +1,8 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useState, useRef } from "react";
 import { ArrowLeft, CheckCircle2, AlertCircle } from "lucide-react";
-import { useAuthStore } from "@/store/authStore";
 import { toast } from "sonner";
+import { campayPaymentsApi } from "@/api/campayPayments.api";
 
 export const Route = createFileRoute("/payments/pay")({
   head: () => ({ meta: [{ title: "Pay Rent — NjangaRent" }] }),
@@ -18,7 +18,6 @@ export const Route = createFileRoute("/payments/pay")({
 type Provider = "mtn" | "orange";
 
 function PayPage() {
-  const { token } = useAuthStore();
   const router = useRouter();
   const { listingId, leaseId, amount, listingTitle } = Route.useSearch();
 
@@ -44,25 +43,26 @@ function PayPage() {
     setError(null);
 
     try {
-      const res = await fetch("/api/nkwa/pay", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({
-          listingId,
-          leaseId,
-          provider,
-          phoneNumber: "+237" + phone.replace(/\s/g, ""),
-          amount: displayAmount,
-          paymentType: "rent",
-        }),
+      const res = await campayPaymentsApi.initiate({
+        listingId,
+        amount: displayAmount,
+        phone: phone.replace(/\s/g, ""),
+        paymentType: "rent",
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Payment initiation failed");
+      const data = res as any;
 
       setWaitingUSSD(true);
       pollCount.current = 0;
 
-      const paymentId = data.data?.id || data.data?.paymentId;
+      const paymentId = data.data?.paymentId || data.paymentId;
+      const reference = data.data?.reference || data.reference;
+      
+      // If payment failed immediately (e.g., amount too high for demo)
+      if (data.data?.status === 'failed') {
+        setIsLoading(false);
+        setError(data.data?.error || "Payment failed");
+        return;
+      }
 
       pollRef.current = setInterval(async () => {
         pollCount.current += 1;
@@ -74,16 +74,14 @@ function PayPage() {
           return;
         }
 
-        const statusRes = await fetch(`/api/nkwa/${paymentId}/status`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const statusData = await statusRes.json();
+        const statusRes = await campayPaymentsApi.getStatus(reference);
+        const statusData = statusRes as any;
         const status = statusData?.data?.status;
 
-        if (status === "success" || status === "completed") {
+        if (status === "SUCCESSFUL" || status === "success" || status === "completed") {
           clearInterval(pollRef.current!);
           router.navigate({ to: "/payments/receipt/$paymentId", params: { paymentId }, search: { amount: displayAmount, title: displayTitle, provider: provider! } });
-        } else if (status === "failed" || status === "error") {
+        } else if (status === "FAILED" || status === "failed" || status === "error") {
           clearInterval(pollRef.current!);
           setWaitingUSSD(false);
           setIsLoading(false);

@@ -38,7 +38,7 @@ function PaymentReviewPage() {
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-xl font-bold tracking-tight">Payment Review</h1>
-          <p className="text-sm text-muted-foreground mt-1">Nkwa Mobile Money transactions for your listings.</p>
+          <p className="text-sm text-muted-foreground mt-1">Campay Mobile Money transactions for your listings.</p>
         </div>
         {totalConfirmed > 0 && (
           <div className="rounded-xl border border-border bg-card px-5 py-3">
@@ -71,7 +71,7 @@ function PaymentReviewPage() {
 
       <div className="rounded-2xl border border-border bg-card overflow-hidden">
         {(payments as any[]).map((p, i) => {
-          const status = (p.nkwa_status ?? "initiated") as string;
+          const status = (p.status ?? "initiated") as string;
           const cfg = STATUS_CONFIG[status] ?? STATUS_CONFIG.initiated;
           const Icon = cfg.icon;
           const date = p.created_at

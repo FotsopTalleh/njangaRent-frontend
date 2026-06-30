@@ -2,7 +2,7 @@
 // Admin-level queries using the Supabase service role key.
 // This bypasses the Flask backend entirely — all reads come directly from Supabase.
 
-import { supabase } from "./supabase";
+import { supabase, normaliseListing } from "./supabase";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Dashboard Stats
@@ -66,7 +66,7 @@ export async function getAdminListings(params: {
 
   let query = supabase
     .from("listings")
-    .select("*", { count: "exact" })
+    .select("*, listing_images(url, category)", { count: "exact" })
     .order("created_at", { ascending: false })
     .range(from, to);
 
@@ -76,7 +76,7 @@ export async function getAdminListings(params: {
   if (error) throw new Error(error.message);
 
   return {
-    data: data ?? [],
+    data: (data ?? []).map(normaliseListing),
     pagination: {
       page,
       limit,

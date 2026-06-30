@@ -25,7 +25,7 @@ function SavedListings() {
       if (!user?.id) return [];
       const { data, error } = await supabase
         .from("saved_listings")
-        .select("id, listing_id, created_at, listings(id, title, display_address, rent_amount, rent_period, property_type, exterior_images, status)")
+        .select("id, listing_id, created_at, listings(id, title, display_address, rent_amount, rent_period, property_type, status, listing_images(url, category))")
         .eq("user_id", user.id)
         .order("created_at", { ascending: false });
       if (error) throw new Error(error.message);
@@ -80,7 +80,8 @@ function SavedListings() {
         {(data as any[]).map((item) => {
           const listing = item.listings as any;
           if (!listing) return null;
-          const thumb = listing.exterior_images?.[0];
+          const extImgs = listing?.listing_images?.filter((img: any) => img.category === 'exterior') || [];
+          const thumb = extImgs.length > 0 ? extImgs[0].url : null;
           return (
             <div key={item.id} className="rounded-2xl border border-border bg-card overflow-hidden flex">
               {/* Thumbnail */}

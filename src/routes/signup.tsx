@@ -31,12 +31,14 @@ function SignupPage() {
   const [step, setStep] = useState<Step>(1);
   const [role, setRole] = useState<Role>("tenant");
   const [showPw, setShowPw] = useState(false);
+  const [showConfirmPw, setShowConfirmPw] = useState(false);
   const [loading, setLoading] = useState(false);
 
   // Step 1 — common fields
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [phone, setPhone] = useState("");
 
   // Step 2 — landlord-specific
@@ -123,7 +125,7 @@ function SignupPage() {
     }
   };
 
-  const step1Valid = fullName.trim().length >= 2 && email.includes("@") && password.length >= 8;
+  const step1Valid = fullName.trim().length >= 2 && email.includes("@") && password.length >= 8 && password === confirmPassword;
   const step2Valid = phone.trim().length >= 6;
 
   return (
@@ -203,6 +205,35 @@ function SignupPage() {
               </button>
             </div>
           </Field>
+
+          <Field label="Confirm password">
+            <div className="relative">
+              <Input
+                id="signup-confirm-password"
+                type={showConfirmPw ? "text" : "password"}
+                autoComplete="new-password"
+                className="rounded-xl h-11 pr-10"
+                placeholder="Re-enter your password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPw((v) => !v)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                aria-label={showConfirmPw ? "Hide password" : "Show password"}
+              >
+                {showConfirmPw ? <EyeOff className="h-4 w-4" aria-hidden="true" /> : <Eye className="h-4 w-4" aria-hidden="true" />}
+              </button>
+            </div>
+          </Field>
+
+          {password && confirmPassword && password !== confirmPassword && (
+            <div className="text-sm text-destructive" role="alert">
+              Passwords do not match
+            </div>
+          )}
 
           {error && (
             <div className="flex items-start gap-2 text-sm text-destructive bg-destructive/10 rounded-xl px-3 py-2" role="alert">

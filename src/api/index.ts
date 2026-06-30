@@ -9,7 +9,7 @@ export { notificationsApi } from "./notifications.api";
 export { listingsApi } from "./listings.api";
 export { messagesApi } from "./messages.api";
 export { appointmentsApi } from "./appointments.api";
-export { nkwaPaymentsApi } from "./nkwaPayments.api";
+export { campayPaymentsApi } from "./campayPayments.api";
 export { adminApi } from "./admin.api";
 export { axiosClient } from "./axiosClient";
 
@@ -24,5 +24,5 @@ export type { AppNotification } from "./notifications.api";
 export type { Listing, BrowseListingsParams, ListingPropertyType, ListingStatus } from "./listings.api";
 export type { Conversation, Message, MessageContent } from "./messages.api";
 export type { Appointment, AppointmentStatus, AppointmentSlot, RespondBody } from "./appointments.api";
-export type { NkwaPayment, NkwaStatus, PaymentType } from "./nkwaPayments.api";
+export type { CampayPayment, CampayStatus, PaymentType } from "./campayPayments.api";
 export type { AdminStats } from "./admin.api";
